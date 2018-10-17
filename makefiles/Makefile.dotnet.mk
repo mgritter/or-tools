@@ -146,6 +146,14 @@ $(GEN_DIR)/ortools/sat/SatParameters.pb.cs: \
  --csharp_opt=file_extension=.pb.cs \
  $(SRC_DIR)$Sortools$Ssat$Ssat_parameters.proto
 
+$(GEN_DIR)/ortools/util/OptionalBoolean.pb.cs: \
+ $(SRC_DIR)/ortools/util/optional_boolean.proto \
+ | $(GEN_DIR)/ortools/util
+	$(PROTOC) --proto_path=$(SRC_DIR) \
+ --csharp_out=$(GEN_PATH)$Sortools$Sutil \
+ --csharp_opt=file_extension=.pb.cs \
+ $(SRC_DIR)$Sortools$Sutil$Soptional_boolean.proto
+
 # Auto-generated rid dependent source code
 $(GEN_DIR)/ortools/linear_solver/linear_solver_csharp_wrap.cc: \
  $(SRC_DIR)/ortools/linear_solver/csharp/linear_solver.i \
@@ -326,6 +334,7 @@ $(DOTNET_ORTOOLS_NATIVE_NUPKG): \
  $(GEN_DIR)/ortools/constraint_solver/RoutingParameters.pb.cs \
  $(GEN_DIR)/ortools/constraint_solver/RoutingEnums.pb.cs \
  $(GEN_DIR)/ortools/sat/CpModel.pb.cs \
+ $(GEN_DIR)/ortools/util/OptionalBoolean.pb.cs \
  | $(PACKAGE_DIR)
 	"$(DOTNET_BIN)" build ortools$Sdotnet$S$(OR_TOOLS_NATIVE_ASSEMBLY_NAME)$S$(OR_TOOLS_NATIVE_ASSEMBLY_NAME).csproj
 	"$(DOTNET_BIN)" pack ortools$Sdotnet$S$(OR_TOOLS_NATIVE_ASSEMBLY_NAME)$S$(OR_TOOLS_NATIVE_ASSEMBLY_NAME).csproj
@@ -679,6 +688,7 @@ clean_dotnet:
 	-$(DEL) $(GEN_PATH)$Sortools$Slinear_solver$S*.cs
 	-$(DEL) $(GEN_PATH)$Sortools$Slinear_solver$S*csharp_wrap*
 	-$(DEL) $(GEN_PATH)$Sortools$Ssat$S*.cs
+	-$(DEL) $(GEN_PATH)$Sortools$Sutil$S*.cs
 	-$(DEL) $(GEN_PATH)$Sortools$Ssat$S*csharp_wrap*
 	-$(DEL) $(OBJ_DIR)$Sswig$S*_csharp_wrap.$O
 	-$(DEL) $(LIB_DIR)$S$(OR_TOOLS_NATIVE_ASSEMBLY_NAME).*
