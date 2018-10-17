@@ -16,7 +16,8 @@ using System.Collections.Generic;
 using Google.OrTools.ConstraintSolver;
 
 /// <summary>
-///   This is a sample using the routing library .Net wrapper to solve a TSP problem.
+///   This is a sample using the routing library .Net wrapper to solve a TSP
+///   problem.
 ///   A description of the problem can be found here:
 ///   http://en.wikipedia.org/wiki/Travelling_salesman_problem.
 /// </summary>
@@ -65,18 +66,21 @@ public class TSP {
     private int[,] distances_;
     private RoutingIndexManager manager_;
 
-    public ManhattanDistance(in DataProblem data, in RoutingIndexManager manager) {
+    public ManhattanDistance(in DataProblem data,
+                             in RoutingIndexManager manager) {
       // precompute distance between location to have distance callback in O(1)
       distances_ = new int[data.GetLocationNumber(), data.GetLocationNumber()];
-      manager_ = manager_;
+      manager_ = manager;
       for (int fromNode = 0; fromNode < data.GetLocationNumber(); fromNode++) {
         for (int toNode = 0; toNode < data.GetLocationNumber(); toNode++) {
           if (fromNode == toNode)
             distances_[fromNode, toNode] = 0;
           else
             distances_[fromNode, toNode] =
-              Math.Abs(data.GetLocations()[toNode, 0] - data.GetLocations()[fromNode, 0]) +
-              Math.Abs(data.GetLocations()[toNode, 1] - data.GetLocations()[fromNode, 1]);
+              Math.Abs(data.GetLocations()[toNode, 0] -
+                       data.GetLocations()[fromNode, 0]) +
+              Math.Abs(data.GetLocations()[toNode, 1] -
+                       data.GetLocations()[fromNode, 1]);
         }
       }
     }
@@ -132,11 +136,14 @@ public class TSP {
     LongLongToLong distanceEvaluator = new ManhattanDistance(data, manager);
     //protect callbacks from the GC
     GC.KeepAlive(distanceEvaluator);
-    routing.SetArcCostEvaluatorOfAllVehicles(routing.RegisterTransitCallback(distanceEvaluator));
+    routing.SetArcCostEvaluatorOfAllVehicles(
+        routing.RegisterTransitCallback(distanceEvaluator));
 
     // Setting first solution heuristic (cheapest addition).
-    RoutingSearchParameters searchParameters = operations_research_constraint_solver.DefaultRoutingSearchParameters();
-    searchParameters.FirstSolutionStrategy = FirstSolutionStrategy.Types.Value.PathCheapestArc;
+    RoutingSearchParameters searchParameters =
+        operations_research_constraint_solver.DefaultRoutingSearchParameters();
+    searchParameters.FirstSolutionStrategy =
+        FirstSolutionStrategy.Types.Value.PathCheapestArc;
 
     Assignment solution = routing.SolveWithParameters(searchParameters);
     PrintSolution(data, routing, manager, solution);

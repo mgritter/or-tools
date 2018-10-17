@@ -35,10 +35,6 @@ class RoutingSearchParameters;
 
 %module(directors="1") operations_research;
 
-%rename (AddDimensionAux) operations_research::RoutingModel::AddDimension;
-%rename (AddDimensionWithVehicleCapacityAux) operations_research::RoutingModel::AddDimensionWithVehicleCapacity;
-%rename (SetArcCostEvaluatorOfAllVehiclesAux) operations_research::RoutingModel::SetArcCostEvaluatorOfAllVehicles;
-%rename (SetArcCostEvaluatorOfVehicleAux) operations_research::RoutingModel::SetArcCostEvaluatorOfVehicle;
 %rename (RoutingModelStatus) operations_research::RoutingModel::Status;
 
 %ignore operations_research::RoutingModel::AddVectorDimension(
@@ -56,7 +52,22 @@ class RoutingSearchParameters;
 %ignore operations_research::RoutingModel::MakeStateDependentTransit;
 %ignore operations_research::RoutingModel::AddDimensionDependentDimensionWithVehicleCapacity;
 
+%ignore operations_research::RoutingModel::RegisterTransitCallback(
+    operations_research::TransitCallback2);
+%ignore operations_research::RoutingModel::RegisterUnaryTransitCallback(
+    operations_research::TransitCallback1);
+
 %extend operations_research::RoutingModel {
+  int RegisterTransitCallback(swig_util::LongLongToLong* callback) {
+    return $self->RegisterTransitCallback([callback](int64 i, int64 j) {
+        return callback->Run(i, j);
+      });
+  }
+  int RegisterUnaryTransitCallback(swig_util::LongToLong* callback) {
+    return $self->RegisterUnaryTransitCallback([callback](int64 i) {
+        return callback->Run(i);
+      });
+  }
   void AddVectorDimension(const std::vector<int64>& values,
                           int64 capacity,
                           bool fix_start_cumul_to_zero,
