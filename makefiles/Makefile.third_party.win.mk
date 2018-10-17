@@ -388,6 +388,8 @@ STATIC_ABSL_LNK = \
  "$(WINDOWS_ABSL_PATH)\\lib\\absl_stack_consumption.lib" \
  "$(WINDOWS_ABSL_PATH)\\lib\\absl_stacktrace.lib" \
  "$(WINDOWS_ABSL_PATH)\\lib\\absl_strings.lib" \
+ "$(WINDOWS_ABSL_PATH)\\lib\\absl_str_format_extension_internal.lib" \
+ "$(WINDOWS_ABSL_PATH)\\lib\\absl_str_format_internal.lib" \
  "$(WINDOWS_ABSL_PATH)\\lib\\absl_symbolize.lib" \
  "$(WINDOWS_ABSL_PATH)\\lib\\absl_synchronization.lib" \
  "$(WINDOWS_ABSL_PATH)\\lib\\absl_throw_delegate.lib" \
