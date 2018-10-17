@@ -40,7 +40,7 @@
   $1 = IndexT($input);
 }
 %typemap(out) IndexT {
-  $result = (jlong)$1.value();
+  $result = $1.value();
 }
 %typemap(csvarin) IndexT
 %{

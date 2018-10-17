@@ -67,11 +67,6 @@ class RoutingSearchParameters;
   }
 }
 
-%ignore operations_research::RoutingModel::RoutingModel(
-    const RoutingIndexManager&);
-%ignore operations_research::RoutingModel::RoutingModel(
-    const RoutingIndexManager&, const RoutingModelParameters&);
-
 %rename("%(camelcase)s", %$isfunction) "";
 
 // Protobuf support
