@@ -319,5 +319,5 @@ col_rules = [[2, 1], [1, 3], [2, 4], [3, 4], [0, 4], [0, 3], [0, 3], [0, 3],
 if __name__ == '__main__':
   if len(sys.argv) > 1:
     file = sys.argv[1]
-    exec (compile(open(file).read(), file, 'exec'))
+    exec(compile(open(file).read(), file, 'exec'))
   main(rows, row_rule_len, row_rules, cols, col_rule_len, col_rules)

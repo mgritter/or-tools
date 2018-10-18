@@ -58,14 +58,13 @@ from ortools.constraint_solver import pywrapcp
 # http://www.conceptispuzzles.com/index.aspx?uri=puzzle/fill-a-pix/rules
 default_n = 10
 X = -1
-default_puzzle = [[X, X, X, X, X, X, X, X, 0, X], [
-    X, 8, 8, X, 2, X, 0, X, X, X
-], [5, X, 8, X, X, X, X, X, X,
-    X], [X, X, X, X, X, 2, X, X, X,
-         2], [1, X, X, X, 4, 5, 6, X, X, X], [X, 0, X, X, X, 7, 9, X, X, 6], [
-             X, X, X, 6, X, X, 9, X, X, 6
-         ], [X, X, 6, 6, 8, 7, 8, 7, X, 5], [X, 4, X, 6, 6, 6, X, 6, X, 4],
-                  [X, X, X, X, X, X, 3, X, X, X]]
+default_puzzle = [
+    [X, X, X, X, X, X, X, X, 0, X], [X, 8, 8, X, 2, X, 0, X, X, X],
+    [5, X, 8, X, X, X, X, X, X, X], [X, X, X, X, X, 2, X, X, X, 2],
+    [1, X, X, X, 4, 5, 6, X, X, X], [X, 0, X, X, X, 7, 9, X, X, 6],
+    [X, X, X, 6, X, X, 9, X, X, 6], [X, X, 6, 6, 8, 7, 8, 7, X, 5],
+    [X, 4, X, 6, 6, 6, X, 6, X, 4], [X, X, X, X, X, X, 3, X, X, X]
+]
 
 
 def main(puzzle='', n=''):

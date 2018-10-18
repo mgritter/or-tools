@@ -59,8 +59,8 @@ def main(streams='', placed=''):
   if streams == '':
     streams = [[1, 1, 2, 2, 2, 2, 2], [1, 1, 2, 3, 3, 3, 2],
                [1, 4, 1, 3, 3, 5, 5], [4, 4, 3, 1, 3, 5, 5],
-               [4, 6, 6, 6, 7, 7, 5], [6, 4, 6, 4, 5, 5,
-                                       7], [6, 6, 4, 7, 7, 7, 7]]
+               [4, 6, 6, 6, 7, 7, 5], [6, 4, 6, 4, 5, 5, 7],
+               [6, 6, 4, 7, 7, 7, 7]]
 
     # Note: This is 1-based
     placed = [[2, 1, 1], [2, 3, 7], [2, 5, 6], [2, 7, 4], [3, 2, 7], [3, 6, 1],
@@ -137,7 +137,7 @@ def main(streams='', placed=''):
 if __name__ == '__main__':
   if len(sys.argv) > 1:
     problem_file = sys.argv[1]
-    exec (compile(open(problem_file).read(), problem_file, 'exec'))
+    exec(compile(open(problem_file).read(), problem_file, 'exec'))
     main(streams, placed)
   else:
     main()

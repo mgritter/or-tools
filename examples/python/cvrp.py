@@ -70,6 +70,7 @@ def create_data_model():
   data['depot'] = 0
   return data
 
+
 #######################
 # Problem Constraints #
 #######################
@@ -122,6 +123,7 @@ def add_capacity_constraints(routing, data, demand_evaluator_index):
       True,  # start cumul to zero
       capacity)
 
+
 ###########
 # Printer #
 ###########
@@ -154,6 +156,7 @@ def print_solution(data, routing, manager, assignment):  # pylint:disable=too-ma
   print('Total Distance of all routes: {}m'.format(total_distance))
   print('Total Load of all routes: {}'.format(total_load))
 
+
 ########
 # Main #
 ########
@@ -163,8 +166,8 @@ def main():
   data = create_data_model()
 
   # Create the routing index manager
-  manager =  pywrapcp.RoutingIndexManager(
-      data['num_locations'], data['num_vehicles'], data['depot'])
+  manager = pywrapcp.RoutingIndexManager(data['num_locations'],
+                                         data['num_vehicles'], data['depot'])
 
   # Create Routing Model
   routing = pywrapcp.RoutingModel(manager)

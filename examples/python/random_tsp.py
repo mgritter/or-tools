@@ -10,7 +10,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Traveling Salesman Sample.
 
    This is a sample using the routing library python wrapper to solve a
@@ -23,7 +22,6 @@
    (forbidden arcs).
 """
 
-
 import argparse
 from functools import partial
 import random
@@ -31,17 +29,25 @@ import random
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 
-parser=argparse.ArgumentParser()
+parser = argparse.ArgumentParser()
 
-parser.add_argument('--tsp_size', default=10, type=int,
-                    help='Size of Traveling Salesman Problem instance.')
-parser.add_argument('--tsp_use_random_matrix', default=True, type=bool,
-                    help='Use random cost matrix.')
-parser.add_argument('--tsp_random_forbidden_connections', default=0, type=int,
-                    help='Number of random forbidden connections.')
-parser.add_argument('--tsp_random_seed', default=0, type=int,
-                    help='Random seed.')
-
+parser.add_argument(
+    '--tsp_size',
+    default=10,
+    type=int,
+    help='Size of Traveling Salesman Problem instance.')
+parser.add_argument(
+    '--tsp_use_random_matrix',
+    default=True,
+    type=bool,
+    help='Use random cost matrix.')
+parser.add_argument(
+    '--tsp_random_forbidden_connections',
+    default=0,
+    type=int,
+    help='Number of random forbidden connections.')
+parser.add_argument(
+    '--tsp_random_seed', default=0, type=int, help='Random seed.')
 
 # Cost/distance functions.
 
@@ -84,8 +90,7 @@ def main(args):
     # Second argument = 1 to build a single tour (it's a TSP).
     # Nodes are indexed from 0 to args_tsp_size - 1, by default the start of
     # the route is node 0.
-    manager = pywrapcp.RoutingIndexManager(
-        args.tsp_size, 1, 0)
+    manager = pywrapcp.RoutingIndexManager(args.tsp_size, 1, 0)
     routing = pywrapcp.RoutingModel(manager)
     search_parameters = pywrapcp.DefaultRoutingSearchParameters()
     # Setting first solution heuristic (cheapest addition).
@@ -134,6 +139,7 @@ def main(args):
       print('No solution found.')
   else:
     print('Specify an instance greater than 0.')
+
 
 if __name__ == '__main__':
   main(parser.parse_args())

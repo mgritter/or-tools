@@ -59,6 +59,7 @@ def create_data_model():
   data['depot'] = 0
   return data
 
+
 #######################
 # Problem Constraints #
 #######################
@@ -89,6 +90,7 @@ def create_distance_evaluator(data):
 
   return distance_evaluator
 
+
 ###########
 # Printer #
 ###########
@@ -104,12 +106,14 @@ def print_solution(data, routing, manager, assignment):  # pylint:disable=too-ma
       plan_output += ' {} ->'.format(manager.IndexToNode(index))
       previous_index = index
       index = assignment.Value(routing.NextVar(index))
-      distance += routing.GetArcCostForVehicle(previous_index, index, vehicle_id)
+      distance += routing.GetArcCostForVehicle(previous_index, index,
+                                               vehicle_id)
     plan_output += ' {}\n'.format(manager.IndexToNode(index))
     plan_output += 'Distance of the route: {}m\n'.format(distance)
     print(plan_output)
     total_distance += distance
   print('Total Distance of all routes: {}m'.format(total_distance))
+
 
 ########
 # Main #
@@ -120,8 +124,8 @@ def main():
   data = create_data_model()
 
   # Create the routing index manager
-  manager =  pywrapcp.RoutingIndexManager(
-      data['num_locations'], data['num_vehicles'], data['depot'])
+  manager = pywrapcp.RoutingIndexManager(data['num_locations'],
+                                         data['num_vehicles'], data['depot'])
 
   # Create Routing Model
   routing = pywrapcp.RoutingModel(manager)

@@ -59,6 +59,7 @@ def create_data_model():
   data['depot'] = 0
   return data
 
+
 #######################
 # Problem Constraints #
 #######################
@@ -89,6 +90,7 @@ def create_distance_evaluator(data):
 
   return distance_evaluator
 
+
 def add_distance_dimension(routing, distance_evaluator_index):
   """Add Global Span constraint"""
   distance = 'Distance'
@@ -102,6 +104,7 @@ def add_distance_dimension(routing, distance_evaluator_index):
   # Try to minimize the max distance among vehicles.
   # /!\ It doesn't mean the standard deviation is minimized
   distance_dimension.SetGlobalSpanCostCoefficient(100)
+
 
 ###########
 # Printer #
@@ -118,12 +121,14 @@ def print_solution(data, routing, manager, assignment):  # pylint:disable=too-ma
       plan_output += ' {} ->'.format(manager.IndexToNode(index))
       previous_index = index
       index = assignment.Value(routing.NextVar(index))
-      distance += routing.GetArcCostForVehicle(previous_index, index, vehicle_id)
+      distance += routing.GetArcCostForVehicle(previous_index, index,
+                                               vehicle_id)
     plan_output += ' {}\n'.format(manager.IndexToNode(index))
     plan_output += 'Distance of the route: {}m\n'.format(distance)
     print(plan_output)
     total_distance += distance
   print('Total Distance of all routes: {}m'.format(total_distance))
+
 
 ########
 # Main #
@@ -134,8 +139,8 @@ def main():
   data = create_data_model()
 
   # Create the routing index manager
-  manager =  pywrapcp.RoutingIndexManager(
-      data['num_locations'], data['num_vehicles'], data['depot'])
+  manager = pywrapcp.RoutingIndexManager(data['num_locations'],
+                                         data['num_vehicles'], data['depot'])
 
   # Create Routing Model
   routing = pywrapcp.RoutingModel(manager)

@@ -59,6 +59,7 @@ def create_data_model():
   data['depot'] = 0
   return data
 
+
 #######################
 # Problem Constraints #
 #######################
@@ -89,6 +90,7 @@ def create_distance_evaluator(data):
 
   return distance_evaluator
 
+
 ###########
 # Printer #
 ###########
@@ -107,6 +109,7 @@ def print_solution(routing, manager, assignment):
   plan_output += 'Distance of the route: {}m\n'.format(distance)
   print(plan_output)
 
+
 ########
 # Main #
 ########
@@ -116,8 +119,8 @@ def main():
   data = create_data_model()
 
   # Create the routing index manager
-  manager =  pywrapcp.RoutingIndexManager(
-      data['num_locations'], data['num_vehicles'], data['depot'])
+  manager = pywrapcp.RoutingIndexManager(data['num_locations'],
+                                         data['num_vehicles'], data['depot'])
 
   # Create Routing Model
   routing = pywrapcp.RoutingModel(manager)

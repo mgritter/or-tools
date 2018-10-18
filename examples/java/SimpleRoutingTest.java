@@ -10,7 +10,7 @@ import com.google.ortools.constraintsolver.main;
 
 public class SimpleRoutingTest {
 
-  //Static Add Library
+  // Static Add Library
   static { System.loadLibrary("jniortools"); }
 
   private ArrayList<Integer> globalRes;
@@ -30,7 +30,7 @@ public class SimpleRoutingTest {
     globalRes = new ArrayList();
   }
 
-  //Node Distance Evaluation
+  // Node Distance Evaluation
   public static class NodeDistance extends IntIntToLong {
     private int[][] costMatrix;
     private RoutingIndexManager indexManager;
@@ -48,7 +48,7 @@ public class SimpleRoutingTest {
     }
   }
 
-  //Solve Method
+  // Solve Method
   public void solve() {
     RoutingIndexManager manager = new RoutingIndexManager(costMatrix.length, 1, 0);
     RoutingModel routing = new RoutingModel(manager);

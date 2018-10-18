@@ -257,8 +257,8 @@ def main():
   data = create_data_model()
 
   # Create the routing index manager
-  manager =  pywrapcp.RoutingIndexManager(
-      data['num_locations'], data['num_vehicles'], data['depot'])
+  manager = pywrapcp.RoutingIndexManager(data['num_locations'],
+                                         data['num_vehicles'], data['depot'])
 
   # Create Routing Model
   routing = pywrapcp.RoutingModel(manager)

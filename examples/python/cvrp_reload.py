@@ -41,20 +41,29 @@ def create_data_model():
   _capacity = 15
   # Locations in block unit
   _locations = [
-      (4, 4), # depot
-      (4, 4), # unload depot_prime
-      (4, 4), # unload depot_second
-      (4, 4), # unload depot_fourth
-      (4, 4), # unload depot_fourth
-      (4, 4), # unload depot_fifth
-      (2, 0), (8, 0), # locations to visit
-      (0, 1), (1, 1),
-      (5, 2), (7, 2),
-      (3, 3), (6, 3),
-      (5, 5), (8, 5),
-      (1, 6), (2, 6),
-      (3, 7), (6, 7),
-      (0, 8), (7, 8)]
+      (4, 4),  # depot
+      (4, 4),  # unload depot_prime
+      (4, 4),  # unload depot_second
+      (4, 4),  # unload depot_fourth
+      (4, 4),  # unload depot_fourth
+      (4, 4),  # unload depot_fifth
+      (2, 0),
+      (8, 0),  # locations to visit
+      (0, 1),
+      (1, 1),
+      (5, 2),
+      (7, 2),
+      (3, 3),
+      (6, 3),
+      (5, 5),
+      (8, 5),
+      (1, 6),
+      (2, 6),
+      (3, 7),
+      (6, 7),
+      (0, 8),
+      (7, 8)
+  ]
   # Compute locations in meters using the block dimension defined as follow
   # Manhattan average block: 750ft x 264ft -> 228m x 80m
   # here we use: 114m x 80m city block
@@ -76,7 +85,7 @@ def create_data_model():
          1, 2, # 11,12
          4, 4, # 13, 14
          8, 8] # 15, 16
-  data['time_per_demand_unit'] = 5 # 5 minutes/unit
+  data['time_per_demand_unit'] = 5  # 5 minutes/unit
   data['time_windows'] = \
         [(0, 0), # depot
          (0, 1000),
@@ -94,9 +103,11 @@ def create_data_model():
          (45, 5500), (30, 4000)] # 15, 16
   data['num_vehicles'] = 3
   data['vehicle_capacity'] = _capacity
-  data['vehicle_speed'] = 5*60/3.6 # Travel speed: 5km/h to convert in m/min
+  data[
+      'vehicle_speed'] = 5 * 60 / 3.6  # Travel speed: 5km/h to convert in m/min
   data['depot'] = 0
   return data
+
 
 #######################
 # Problem Constraints #
@@ -128,6 +139,7 @@ def create_distance_evaluator(data):
 
   return distance_evaluator
 
+
 def add_distance_dimension(routing, distance_evaluator_index):
   """Add Global Span constraint"""
   distance = 'Distance'
@@ -141,6 +153,7 @@ def add_distance_dimension(routing, distance_evaluator_index):
   # Try to minimize the max distance among vehicles.
   # /!\ It doesn't mean the standard deviation is minimized
   distance_dimension.SetGlobalSpanCostCoefficient(100)
+
 
 def create_demand_evaluator(data):
   """Creates callback to get demands at each location."""
@@ -159,7 +172,7 @@ def add_capacity_constraints(routing, manager, data, demand_evaluator_index):
   capacity = 'Capacity'
   routing.AddDimension(
       demand_evaluator_index,
-      0, # Null slack
+      0,  # Null slack
       vehicle_capacity,
       True,  # start cumul to zero
       capacity)
@@ -173,8 +186,10 @@ def add_capacity_constraints(routing, manager, data, demand_evaluator_index):
     capacity_dimension.SlackVar(index).SetRange(0, vehicle_capacity)
     routing.AddDisjunction([node_index], 0)
 
+
 def create_time_evaluator(data):
   """Creates callback to get total times between locations."""
+
   def service_time(data, node):
     """Gets the service time for the specified location."""
     return abs(data['demands'][node]) * data['time_per_demand_unit']
@@ -208,6 +223,7 @@ def create_time_evaluator(data):
 
   return time_evaluator
 
+
 def add_time_window_constraints(routing, manager, data, time_evaluator):
   """Add Time windows constraint"""
   time = 'Time'
@@ -237,6 +253,7 @@ def add_time_window_constraints(routing, manager, data, time_evaluator):
     # Warning: Slack var is not defined for vehicle's end node
     #routing.AddToAssignment(time_dimension.SlackVar(self.routing.End(vehicle_id)))
 
+
 ###########
 # Printer #
 ###########
@@ -263,10 +280,8 @@ def print_solution(data, manager, routing, assignment):  # pylint:disable=too-ma
       load_var = capacity_dimension.CumulVar(index)
       time_var = time_dimension.CumulVar(index)
       plan_output += ' {0} Load({1}) Time({2},{3}) ->'.format(
-          manager.IndexToNode(index),
-          assignment.Value(load_var),
-          assignment.Min(time_var),
-          assignment.Max(time_var))
+          manager.IndexToNode(index), assignment.Value(load_var),
+          assignment.Min(time_var), assignment.Max(time_var))
       previous_index = index
       index = assignment.Value(routing.NextVar(index))
       distance += routing.GetArcCostForVehicle(previous_index, index,
@@ -274,13 +289,12 @@ def print_solution(data, manager, routing, assignment):  # pylint:disable=too-ma
     load_var = capacity_dimension.CumulVar(index)
     time_var = time_dimension.CumulVar(index)
     plan_output += ' {0} Load({1}) Time({2},{3})\n'.format(
-        manager.IndexToNode(index),
-        assignment.Value(load_var),
-        assignment.Min(time_var),
-        assignment.Max(time_var))
+        manager.IndexToNode(index), assignment.Value(load_var),
+        assignment.Min(time_var), assignment.Max(time_var))
     plan_output += 'Distance of the route: {}m\n'.format(distance)
     plan_output += 'Load of the route: {}\n'.format(assignment.Value(load_var))
-    plan_output += 'Time of the route: {}min\n'.format(assignment.Value(time_var))
+    plan_output += 'Time of the route: {}min\n'.format(
+        assignment.Value(time_var))
     print(plan_output)
     total_distance += distance
     total_load += assignment.Value(load_var)
@@ -288,6 +302,7 @@ def print_solution(data, manager, routing, assignment):  # pylint:disable=too-ma
   print('Total Distance of all routes: {}m'.format(total_distance))
   print('Total Load of all routes: {}'.format(total_load))
   print('Total Time of all routes: {}min'.format(total_time))
+
 
 ########
 # Main #
@@ -298,8 +313,8 @@ def main():
   data = create_data_model()
 
   # Create the routing index manager
-  manager =  pywrapcp.RoutingIndexManager(
-      data['num_locations'], data['num_vehicles'], data['depot'])
+  manager = pywrapcp.RoutingIndexManager(data['num_locations'],
+                                         data['num_vehicles'], data['depot'])
 
   # Create Routing Model
   routing = pywrapcp.RoutingModel(manager)
