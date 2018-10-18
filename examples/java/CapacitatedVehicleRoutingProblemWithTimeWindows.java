@@ -14,7 +14,7 @@
 // limitations under the License.
 import com.google.ortools.constraintsolver.Assignment;
 import com.google.ortools.constraintsolver.IntVar;
-import com.google.ortools.constraintsolver.LongLongToLong;
+import com.google.ortools.constraintsolver.IntIntToLong;
 import com.google.ortools.constraintsolver.RoutingModel;
 import com.google.ortools.constraintsolver.RoutingIndexManager;
 import com.google.ortools.constraintsolver.FirstSolutionStrategy;
@@ -87,13 +87,13 @@ public class CapacitatedVehicleRoutingProblemWithTimeWindows {
    * @param manager Node Index Manager.
    * @param costCoefficient The coefficient to apply to the evaluator.
    */
-  private LongLongToLong buildManhattanCallback(RoutingIndexManager manager, int costCoefficient) {
-    return new LongLongToLong() {
+  private IntIntToLong buildManhattanCallback(RoutingIndexManager manager, int costCoefficient) {
+    return new IntIntToLong() {
       @Override
-      public long run(long firstIndex, long secondIndex) {
+      public long run(int firstIndex, int secondIndex) {
         try {
-          int firstNode = manager.indexToNode((int) firstIndex);
-          int secondNode = manager.indexToNode((int) secondIndex);
+          int firstNode = manager.indexToNode(firstIndex);
+          int secondNode = manager.indexToNode(secondIndex);
           Pair<Integer, Integer> firstLocation = locations.get(firstNode);
           Pair<Integer, Integer> secondLocation = locations.get(secondNode);
           return (long) costCoefficient
@@ -186,20 +186,20 @@ public class CapacitatedVehicleRoutingProblemWithTimeWindows {
 
     // Setting up dimensions
     final int bigNumber = 100000;
-    final LongLongToLong callback = buildManhattanCallback(manager, 1);
+    final IntIntToLong callback = buildManhattanCallback(manager, 1);
     final String timeStr = "time";
     model.addDimension(
         model.registerTransitCallback(callback), bigNumber, bigNumber, false, timeStr);
     RoutingDimension timeDimension = model.getMutableDimension(timeStr);
 
-    LongLongToLong demandCallback =
-        new LongLongToLong() {
+    IntToLong demandCallback =
+        new IntToLong() {
           @Override
-          public long run(long firstIndex, long secondIndex) {
+          public long run(int index) {
             try {
-              int firstNode = manager.indexToNode((int) firstIndex);
-              if (firstNode < numberOfOrders) {
-                return orderDemands.get(firstNode);
+              int node = manager.indexToNode(index);
+              if (node < numberOfOrders) {
+                return orderDemands.get(node);
               }
               return 0;
             } catch (Throwable throwed) {
@@ -210,11 +210,11 @@ public class CapacitatedVehicleRoutingProblemWithTimeWindows {
         };
     final String capacityStr = "capacity";
     model.addDimension(
-        model.registerTransitCallback(demandCallback), 0, vehicleCapacity, true, capacityStr);
+        model.registerUnaryTransitCallback(demandCallback), 0, vehicleCapacity, true, capacityStr);
     RoutingDimension capacityDimension = model.getMutableDimension(capacityStr);
 
     // Setting up vehicles
-    LongLongToLong[] callbacks = new LongLongToLong[numberOfVehicles];
+    IntIntToLong[] callbacks = new IntIntToLong[numberOfVehicles];
     for (int vehicle = 0; vehicle < numberOfVehicles; ++vehicle) {
       final int costCoefficient = vehicleCostCoefficients.get(vehicle);
       callbacks[vehicle] = buildManhattanCallback(manager, costCoefficient);

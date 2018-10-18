@@ -742,6 +742,10 @@ WRAP_STD_FUNCTION_JAVA(
     "com/google/ortools/constraintsolver/",
     int64, Long, int64, int64)
 WRAP_STD_FUNCTION_JAVA(
+    IntToLong,
+    "com/google/ortools/constraintsolver/",
+    int64, Long, int)
+WRAP_STD_FUNCTION_JAVA(
     IntIntToLong,
     "com/google/ortools/constraintsolver/",
     int64, Long, int, int)

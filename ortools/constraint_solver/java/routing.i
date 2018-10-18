@@ -34,12 +34,6 @@ class RoutingSearchParameters;
 #include "ortools/constraint_solver/routing.h"
 %}
 
-// Wrapper for std::function<int64(int64, int64)>
-WRAP_STD_FUNCTION_JAVA(
-    LongLongToLong,
-    "com/google/ortools/constraintsolver/",
-    int64, Long, int64, int64)
-
 %typemap(in) const std::vector<std::vector<operations_research::RoutingModel::NodeIndex> >&
 (std::vector<std::vector<operations_research::RoutingModel::NodeIndex> > temp) {
   if ($input) {
