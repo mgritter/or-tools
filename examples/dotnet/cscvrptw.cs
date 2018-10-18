@@ -63,7 +63,7 @@ public class CapacitatedVehicleRoutingProblemWithTimeWindows {
   ///   positions and computes the Manhattan distance between the two
   ///   positions of two different indices.
   /// </summary>
-  class Manhattan : LongLongToLong {
+  class Manhattan : IntIntToLong {
     public Manhattan(RoutingIndexManager manager,
                      Position[] locations, int coefficient) {
       this.locations_ = locations;
@@ -71,13 +71,13 @@ public class CapacitatedVehicleRoutingProblemWithTimeWindows {
       this.manager_ = manager;
     }
 
-    public override long Run(long first_index, long second_index) {
+    public override long Run(int first_index, int second_index) {
       if (first_index >= locations_.Length ||
           second_index >= locations_.Length) {
         return 0;
       }
-      int first_node = manager_.IndexToNode((int)first_index);
-      int second_node = manager_.IndexToNode((int)second_index);
+      int first_node = manager_.IndexToNode(first_index);
+      int second_node = manager_.IndexToNode(second_index);
       return (Math.Abs(locations_[first_node].x_ -
                        locations_[second_node].x_) +
               Math.Abs(locations_[first_node].y_ -
@@ -93,12 +93,12 @@ public class CapacitatedVehicleRoutingProblemWithTimeWindows {
   ///   A callback that computes the volume of a demand stored in an
   ///   integer array.
   /// </summary>
-  class Demand : LongToLong {
+  class Demand : IntToLong {
     public Demand(int[] order_demands) {
       this.order_demands_ = order_demands;
     }
 
-    public override long Run(long index) {
+    public override long Run(int index) {
       if (index < order_demands_.Length) {
         return order_demands_[index];
       }
@@ -240,22 +240,22 @@ public class CapacitatedVehicleRoutingProblemWithTimeWindows {
 
     // Setting up dimensions
     const int big_number = 100000;
-    LongLongToLong manhattan_callback = new Manhattan(manager, locations_, 1);
+    IntIntToLong manhattan_callback = new Manhattan(manager, locations_, 1);
     model.AddDimension(
         model.RegisterTransitCallback(manhattan_callback),
         big_number, big_number, false, "time");
     RoutingDimension time_dimension = model.GetDimensionOrDie("time");
 
-    LongToLong demand_callback = new Demand(order_demands_);
+    IntToLong demand_callback = new Demand(order_demands_);
     model.AddDimension(model.RegisterUnaryTransitCallback(demand_callback),
                        0, vehicle_capacity_, true, "capacity");
     RoutingDimension capacity_dimension = model.GetDimensionOrDie("capacity");
 
     // Setting up vehicles
-    LongLongToLong[] cost_callbacks = new LongLongToLong[number_of_vehicles];
+    IntIntToLong[] cost_callbacks = new IntIntToLong[number_of_vehicles];
     for (int vehicle = 0; vehicle < number_of_vehicles; ++vehicle) {
       int cost_coefficient = vehicle_cost_coefficients_[vehicle];
-      LongLongToLong manhattan_cost_callback =
+      IntIntToLong manhattan_cost_callback =
           new Manhattan(manager, locations_, cost_coefficient);
       cost_callbacks[vehicle] = manhattan_cost_callback;
       int manhattan_cost_index =

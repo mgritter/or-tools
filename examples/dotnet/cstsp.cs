@@ -17,7 +17,7 @@ using Google.OrTools.ConstraintSolver;
 
 class Tsp
 {
-  class RandomManhattan : LongLongToLong {
+  class RandomManhattan : IntIntToLong {
     public RandomManhattan(RoutingIndexManager manager, int size, int seed)
     {
       this.xs_ = new int[size];
@@ -31,9 +31,9 @@ class Tsp
       }
     }
 
-    public override long Run(long first_index, long second_index) {
-      int first_node = manager_.IndexToNode((int)first_index);
-      int second_node = manager_.IndexToNode((int)second_index);
+    public override long Run(int first_index, int second_index) {
+      int first_node = manager_.IndexToNode(first_index);
+      int second_node = manager_.IndexToNode(second_index);
       return Math.Abs(xs_[first_node] - xs_[second_node]) +
           Math.Abs(ys_[first_node] - ys_[second_node]);
     }
@@ -43,8 +43,8 @@ class Tsp
     private RoutingIndexManager manager_;
   };
 
-  class ConstantCallback : LongToLong {
-    public override long Run(long index) {
+  class ConstantCallback : IntToLong {
+    public override long Run(int index) {
       return 1;
     }
   };

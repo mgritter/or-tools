@@ -66,6 +66,7 @@ PY_PROTO_TYPEMAP(ortools.constraint_solver.routing_parameters_pb2,
 
 // Wrap routing_types.h, routing_parameters.h according to the SWIG styleguide.
 %ignoreall
+%unignore RoutingTransitCallback1;
 %unignore RoutingTransitCallback2;
 %unignore RoutingIndexPair;
 %unignore RoutingIndexPairs;

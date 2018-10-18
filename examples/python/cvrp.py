@@ -105,18 +105,18 @@ def create_demand_evaluator(data):
   """Creates callback to get demands at each location."""
   _demands = data['demands']
 
-  def demand_evaluator(manager, from_node):
+  def demand_evaluator(manager, node):
     """Returns the demand of the current node"""
-    return _demands[manager.IndexToNode(from_node)]
+    return _demands[manager.IndexToNode(node)]
 
   return demand_evaluator
 
 
-def add_capacity_constraints(routing, data, demand_evaluator):
+def add_capacity_constraints(routing, data, demand_evaluator_index):
   """Adds capacity constraint"""
   capacity = 'Capacity'
   routing.AddDimension(
-      demand_evaluator,
+      demand_evaluator_index,
       0,  # null capacity slack
       data['vehicle_capacity'],
       True,  # start cumul to zero
@@ -125,7 +125,7 @@ def add_capacity_constraints(routing, data, demand_evaluator):
 ###########
 # Printer #
 ###########
-def print_solution(data, manager, routing, assignment):  # pylint:disable=too-many-locals
+def print_solution(data, routing, manager, assignment):  # pylint:disable=too-many-locals
   """Prints assignment on console"""
   print('Objective: {}'.format(assignment.ObjectiveValue()))
   total_distance = 0
@@ -175,9 +175,9 @@ def main():
   routing.SetArcCostEvaluatorOfAllVehicles(distance_evaluator)
 
   # Add Capacity constraint
-  demand_evaluator = routing.RegisterUnaryTransitCallback(
+  demand_evaluator_index = routing.RegisterUnaryTransitCallback(
       partial(create_demand_evaluator(data), manager))
-  add_capacity_constraints(routing, data, demand_evaluator)
+  add_capacity_constraints(routing, data, demand_evaluator_index)
 
   # Setting first solution heuristic (cheapest addition).
   search_parameters = pywrapcp.DefaultRoutingSearchParameters()
@@ -185,7 +185,7 @@ def main():
       routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC)  # pylint: disable=no-member
   # Solve the problem.
   assignment = routing.SolveWithParameters(search_parameters)
-  print_solution(data, manager, routing, assignment)
+  print_solution(data, routing, manager, assignment)
 
 
 if __name__ == '__main__':

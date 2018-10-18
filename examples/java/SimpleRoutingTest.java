@@ -1,7 +1,7 @@
 import java.util.ArrayList;
 
 import com.google.ortools.constraintsolver.Assignment;
-import com.google.ortools.constraintsolver.LongLongToLong;
+import com.google.ortools.constraintsolver.IntIntToLong;
 import com.google.ortools.constraintsolver.RoutingModel;
 import com.google.ortools.constraintsolver.RoutingIndexManager;
 import com.google.ortools.constraintsolver.FirstSolutionStrategy;
@@ -31,7 +31,7 @@ public class SimpleRoutingTest {
   }
 
   //Node Distance Evaluation
-  public static class NodeDistance extends LongLongToLong {
+  public static class NodeDistance extends IntIntToLong {
     private int[][] costMatrix;
     private RoutingIndexManager indexManager;
 
@@ -41,9 +41,9 @@ public class SimpleRoutingTest {
     }
 
     @Override
-    public long run(long firstIndex, long secondIndex) {
-      final int firstNode = indexManager.indexToNode((int) firstIndex);
-      final int secondNode = indexManager.indexToNode((int) secondIndex);
+    public long run(int firstIndex, int secondIndex) {
+      final int firstNode = indexManager.indexToNode(firstIndex);
+      final int secondNode = indexManager.indexToNode(secondIndex);
       return costMatrix[firstNode][secondNode];
     }
   }

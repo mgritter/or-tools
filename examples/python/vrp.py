@@ -127,9 +127,9 @@ def main():
   routing = pywrapcp.RoutingModel(manager)
 
   # Define weight of each edge
-  distance_evaluator = routing.RegisterTransitCallback(
+  distance_evaluator_index = routing.RegisterTransitCallback(
       partial(create_distance_evaluator(data), manager))
-  routing.SetArcCostEvaluatorOfAllVehicles(distance_evaluator)
+  routing.SetArcCostEvaluatorOfAllVehicles(distance_evaluator_index)
 
   # Setting first solution heuristic (cheapest addition).
   search_parameters = pywrapcp.DefaultRoutingSearchParameters()

@@ -128,11 +128,11 @@ def create_distance_evaluator(data):
 
   return distance_evaluator
 
-def add_distance_dimension(routing, distance_evaluator):
+def add_distance_dimension(routing, distance_evaluator_index):
   """Add Global Span constraint"""
   distance = 'Distance'
   routing.AddDimension(
-      distance_evaluator,
+      distance_evaluator_index,
       0,  # null slack
       10000,  # maximum distance per vehicle
       True,  # start cumul to zero
@@ -153,12 +153,12 @@ def create_demand_evaluator(data):
   return demand_evaluator
 
 
-def add_capacity_constraints(routing, manager, data, demand_evaluator):
+def add_capacity_constraints(routing, manager, data, demand_evaluator_index):
   """Adds capacity constraint"""
   vehicle_capacity = data['vehicle_capacity']
   capacity = 'Capacity'
   routing.AddDimension(
-      demand_evaluator,
+      demand_evaluator_index,
       0, # Null slack
       vehicle_capacity,
       True,  # start cumul to zero
@@ -305,22 +305,22 @@ def main():
   routing = pywrapcp.RoutingModel(manager)
 
   # Define weight of each edge
-  distance_evaluator = routing.RegisterTransitCallback(
+  distance_evaluator_index = routing.RegisterTransitCallback(
       partial(create_distance_evaluator(data), manager))
-  routing.SetArcCostEvaluatorOfAllVehicles(distance_evaluator)
+  routing.SetArcCostEvaluatorOfAllVehicles(distance_evaluator_index)
 
   # Add Distance constraint to minimize the longuest route
-  add_distance_dimension(routing, distance_evaluator)
+  add_distance_dimension(routing, distance_evaluator_index)
 
   # Add Capacity constraint
-  demand_evaluator = routing.RegisterUnaryTransitCallback(
+  demand_evaluator_index = routing.RegisterUnaryTransitCallback(
       partial(create_demand_evaluator(data), manager))
-  add_capacity_constraints(routing, manager, data, demand_evaluator)
+  add_capacity_constraints(routing, manager, data, demand_evaluator_index)
 
   # Add Time Window constraint
-  time_evaluator = routing.RegisterTransitCallback(
+  time_evaluator_index = routing.RegisterTransitCallback(
       partial(create_time_evaluator(data), manager))
-  add_time_window_constraints(routing, manager, data, time_evaluator)
+  add_time_window_constraints(routing, manager, data, time_evaluator_index)
 
   # Setting first solution heuristic (cheapest addition).
   search_parameters = pywrapcp.DefaultRoutingSearchParameters()

@@ -14,6 +14,7 @@
 // limitations under the License.
 import com.google.ortools.constraintsolver.Assignment;
 import com.google.ortools.constraintsolver.IntVar;
+import com.google.ortools.constraintsolver.IntToLong;
 import com.google.ortools.constraintsolver.IntIntToLong;
 import com.google.ortools.constraintsolver.RoutingModel;
 import com.google.ortools.constraintsolver.RoutingIndexManager;

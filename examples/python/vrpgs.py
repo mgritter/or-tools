@@ -89,11 +89,11 @@ def create_distance_evaluator(data):
 
   return distance_evaluator
 
-def add_distance_dimension(routing, distance_evaluator):
+def add_distance_dimension(routing, distance_evaluator_index):
   """Add Global Span constraint"""
   distance = 'Distance'
   routing.AddDimension(
-      distance_evaluator,
+      distance_evaluator_index,
       0,  # null slack
       3000,  # maximum distance per vehicle
       True,  # start cumul to zero
@@ -141,9 +141,10 @@ def main():
   routing = pywrapcp.RoutingModel(manager)
 
   # Define weight of each edge
-  distance_evaluator = routing.RegisterTransitCallback(
+  distance_evaluator_index = routing.RegisterTransitCallback(
       partial(create_distance_evaluator(data), manager))
-  add_distance_dimension(routing, distance_evaluator)
+  routing.SetArcCostEvaluatorOfAllVehicles(distance_evaluator_index)
+  add_distance_dimension(routing, distance_evaluator_index)
 
   # Setting first solution heuristic (cheapest addition).
   search_parameters = pywrapcp.DefaultRoutingSearchParameters()
