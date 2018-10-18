@@ -13,16 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 import com.google.ortools.constraintsolver.Assignment;
-import com.google.ortools.constraintsolver.IntVar;
-import com.google.ortools.constraintsolver.IntToLong;
-import com.google.ortools.constraintsolver.IntIntToLong;
-import com.google.ortools.constraintsolver.RoutingModel;
-import com.google.ortools.constraintsolver.RoutingIndexManager;
 import com.google.ortools.constraintsolver.FirstSolutionStrategy;
+import com.google.ortools.constraintsolver.IntIntToLong;
+import com.google.ortools.constraintsolver.IntToLong;
+import com.google.ortools.constraintsolver.IntVar;
 import com.google.ortools.constraintsolver.RoutingDimension;
+import com.google.ortools.constraintsolver.RoutingIndexManager;
+import com.google.ortools.constraintsolver.RoutingModel;
 import com.google.ortools.constraintsolver.RoutingSearchParameters;
 import com.google.ortools.constraintsolver.main;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -45,14 +44,14 @@ class Pair<K, V> {
 }
 
 /**
- * Sample showing how to model and solve a capacitated vehicle routing problem
- * with time windows using the swig-wrapped version of the vehicle routing
- * library in src/constraint_solver.
+ * Sample showing how to model and solve a capacitated vehicle routing problem with time windows
+ * using the swig-wrapped version of the vehicle routing library in src/constraint_solver.
  */
-
 public class CapacitatedVehicleRoutingProblemWithTimeWindows {
 
-  static { System.loadLibrary("jniortools"); }
+  static {
+    System.loadLibrary("jniortools");
+  }
 
   private static Logger logger =
       Logger.getLogger(CapacitatedVehicleRoutingProblemWithTimeWindows.class.getName());
@@ -109,8 +108,8 @@ public class CapacitatedVehicleRoutingProblemWithTimeWindows {
   }
 
   /**
-   * Creates order data. Location of the order is random, as well as its
-   * demand (quantity), time window and penalty.
+   * Creates order data. Location of the order is random, as well as its demand (quantity), time
+   * window and penalty.
    *
    * @param numberOfOrders number of orders to build.
    * @param xMax maximum x coordinate in which orders are located.
@@ -121,17 +120,18 @@ public class CapacitatedVehicleRoutingProblemWithTimeWindows {
    * @param penaltyMin minimum pernalty cost if order is dropped.
    * @param penaltyMax maximum pernalty cost if order is dropped.
    */
-  private void buildOrders(int numberOfOrders,
-                           int xMax, int yMax,
-                           int demandMax,
-                           int timeWindowMax,
-                           int timeWindowWidth,
-                           int penaltyMin,
-                           int penaltyMax) {
+  private void buildOrders(
+      int numberOfOrders,
+      int xMax,
+      int yMax,
+      int demandMax,
+      int timeWindowMax,
+      int timeWindowWidth,
+      int penaltyMin,
+      int penaltyMax) {
     logger.info("Building orders.");
     for (int order = 0; order < numberOfOrders; ++order) {
-      locations.add(Pair.of(randomGenerator.nextInt(xMax + 1),
-                            randomGenerator.nextInt(yMax + 1)));
+      locations.add(Pair.of(randomGenerator.nextInt(xMax + 1), randomGenerator.nextInt(yMax + 1)));
       orderDemands.add(randomGenerator.nextInt(demandMax + 1));
       int timeWindowStart = randomGenerator.nextInt(timeWindowMax + 1);
       orderTimeWindows.add(Pair.of(timeWindowStart, timeWindowStart + timeWindowWidth));
@@ -140,44 +140,36 @@ public class CapacitatedVehicleRoutingProblemWithTimeWindows {
   }
 
   /**
-   * Creates fleet data. Vehicle starting and ending locations are random, as
-   * well as vehicle costs per distance unit.
+   * Creates fleet data. Vehicle starting and ending locations are random, as well as vehicle costs
+   * per distance unit.
    *
    * @param numberOfVehicles
    * @param xMax maximum x coordinate in which orders are located.
    * @param yMax maximum y coordinate in which orders are located.
    * @param endTime latest end time of a tour of a vehicle.
    * @param capacity capacity of a vehicle.
-   * @param costCoefficientMax maximum cost per distance unit of a vehicle
-   *        (mimimum is 1),
+   * @param costCoefficientMax maximum cost per distance unit of a vehicle (mimimum is 1),
    */
-  private void buildFleet(int numberOfVehicles,
-                          int xMax, int yMax,
-                          int endTime,
-                          int capacity,
-                          int costCoefficientMax) {
+  private void buildFleet(
+      int numberOfVehicles, int xMax, int yMax, int endTime, int capacity, int costCoefficientMax) {
     logger.info("Building fleet.");
     vehicleCapacity = capacity;
     vehicleStarts = new int[numberOfVehicles];
     vehicleEnds = new int[numberOfVehicles];
     for (int vehicle = 0; vehicle < numberOfVehicles; ++vehicle) {
       vehicleStarts[vehicle] = locations.size();
-      locations.add(Pair.of(randomGenerator.nextInt(xMax + 1),
-                            randomGenerator.nextInt(yMax + 1)));
+      locations.add(Pair.of(randomGenerator.nextInt(xMax + 1), randomGenerator.nextInt(yMax + 1)));
       vehicleEnds[vehicle] = locations.size();
-      locations.add(Pair.of(randomGenerator.nextInt(xMax + 1),
-                            randomGenerator.nextInt(yMax + 1)));
+      locations.add(Pair.of(randomGenerator.nextInt(xMax + 1), randomGenerator.nextInt(yMax + 1)));
       vehicleEndTime.add(endTime);
       vehicleCostCoefficients.add(randomGenerator.nextInt(costCoefficientMax) + 1);
     }
   }
 
-  /**
-   * Solves the current routing problem.
-   */
+  /** Solves the current routing problem. */
   private void solve(final int numberOfOrders, final int numberOfVehicles) {
-    logger.info("Creating model with " + numberOfOrders + " orders and " +
-      numberOfVehicles + " vehicles.");
+    logger.info(
+        "Creating model with " + numberOfOrders + " orders and " + numberOfVehicles + " vehicles.");
     // Finalizing model
     final int numberOfLocations = locations.size();
 
@@ -313,20 +305,9 @@ public class CapacitatedVehicleRoutingProblemWithTimeWindows {
     final int vehicles = 20;
     final int capacity = 50;
 
-    problem.buildOrders(orders,
-                        xMax,
-                        yMax,
-                        demandMax,
-                        timeWindowMax,
-                        timeWindowWidth,
-                        penaltyMin,
-                        penaltyMax);
-    problem.buildFleet(vehicles,
-                       xMax,
-                       yMax,
-                       endTime,
-                       capacity,
-                       costCoefficientMax);
+    problem.buildOrders(
+        orders, xMax, yMax, demandMax, timeWindowMax, timeWindowWidth, penaltyMin, penaltyMax);
+    problem.buildFleet(vehicles, xMax, yMax, endTime, capacity, costCoefficientMax);
     problem.solve(orders, vehicles);
   }
 }

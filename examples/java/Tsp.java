@@ -12,18 +12,17 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import java.io.*;
-import java.util.*;
-import java.text.*;
-
 import com.google.ortools.constraintsolver.Assignment;
-import com.google.ortools.constraintsolver.IntToLong;
+import com.google.ortools.constraintsolver.FirstSolutionStrategy;
 import com.google.ortools.constraintsolver.IntIntToLong;
+import com.google.ortools.constraintsolver.IntToLong;
 import com.google.ortools.constraintsolver.RoutingIndexManager;
 import com.google.ortools.constraintsolver.RoutingModel;
-import com.google.ortools.constraintsolver.FirstSolutionStrategy;
 import com.google.ortools.constraintsolver.RoutingSearchParameters;
 import com.google.ortools.constraintsolver.main;
+import java.io.*;
+import java.text.*;
+import java.util.*;
 
 class Tsp {
   static {
@@ -46,8 +45,7 @@ class Tsp {
     public long run(int firstIndex, int secondIndex) {
       int firstNode = indexManager.indexToNode(firstIndex);
       int secondNode = indexManager.indexToNode(secondIndex);
-      return Math.abs(xs[firstNode] - xs[secondNode]) +
-          Math.abs(ys[firstNode] - ys[secondNode]);
+      return Math.abs(xs[firstNode] - xs[secondNode]) + Math.abs(ys[firstNode] - ys[secondNode]);
     }
 
     private int[] xs;
@@ -62,8 +60,7 @@ class Tsp {
     }
   }
 
-  static void solve(int size, int forbidden, int seed)
-  {
+  static void solve(int size, int forbidden, int seed) {
     RoutingIndexManager manager = new RoutingIndexManager(size, 1, 0);
     RoutingModel routing = new RoutingModel(manager);
 
@@ -72,8 +69,7 @@ class Tsp {
     // has the following signature: ResultCallback2<int64, int64, int64>.
     // The two arguments are the from and to node inidices.
     IntIntToLong distances = new RandomManhattan(manager, size, seed);
-    routing.setArcCostEvaluatorOfAllVehicles(
-        routing.registerTransitCallback(distances));
+    routing.setArcCostEvaluatorOfAllVehicles(routing.registerTransitCallback(distances));
 
     // Forbid node connections (randomly).
     Random randomizer = new Random();
@@ -99,9 +95,9 @@ class Tsp {
     // Solve, returns a solution if any (owned by RoutingModel).
     RoutingSearchParameters search_parameters =
         RoutingSearchParameters.newBuilder()
-        .mergeFrom(main.defaultRoutingSearchParameters())
-        .setFirstSolutionStrategy(FirstSolutionStrategy.Value.PATH_CHEAPEST_ARC)
-        .build();
+            .mergeFrom(main.defaultRoutingSearchParameters())
+            .setFirstSolutionStrategy(FirstSolutionStrategy.Value.PATH_CHEAPEST_ARC)
+            .build();
 
     Assignment solution = routing.solveWithParameters(search_parameters);
     if (solution != null) {
@@ -111,8 +107,8 @@ class Tsp {
       // Only one route here; otherwise iterate from 0 to routing.vehicles() - 1
       int route_number = 0;
       for (long node = routing.start(route_number);
-           !routing.isEnd(node);
-           node = solution.value(routing.nextVar(node))) {
+          !routing.isEnd(node);
+          node = solution.value(routing.nextVar(node))) {
         System.out.print("" + node + " -> ");
       }
       System.out.println("0");
