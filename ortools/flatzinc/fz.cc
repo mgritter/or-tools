@@ -188,7 +188,6 @@ int main(int argc, char** argv) {
           (FLAGS_num_solutions = FLAGS_all_solutions ? kint32max : 1)
                                : FLAGS_num_solutions;
   parameters.random_seed = FLAGS_fz_seed;
-  parameters.restart_log_size = -1;
   parameters.search_type = operations_research::fz::FlatzincParameters::DEFAULT;
   parameters.statistics = FLAGS_statistics;
   parameters.threads = FLAGS_threads;

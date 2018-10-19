@@ -50,7 +50,6 @@ FlatzincParameters::FlatzincParameters()
       logging(false),
       statistics(false),
       verbose_impact(false),
-      restart_log_size(-1.0),
       run_all_heuristics(false),
       heuristic_period(100),
       log_period(1000000),
@@ -634,12 +633,10 @@ DecisionBuilder* Solver::CreateDecisionBuilders(const FlatzincParameters& p,
                 (!p.all_solutions && p.num_solutions == 1)
             ? p.heuristic_period
             : -1;
-    parameters.restart_log_size = p.restart_log_size;
     parameters.display_level =
         p.logging ? (p.verbose_impact ? DefaultPhaseParameters::VERBOSE
                                       : DefaultPhaseParameters::NORMAL)
                   : DefaultPhaseParameters::NONE;
-    parameters.use_no_goods = (p.restart_log_size > 0);
     parameters.var_selection_schema =
         DefaultPhaseParameters::CHOOSE_MAX_SUM_IMPACT;
     parameters.value_selection_schema =

@@ -48,7 +48,6 @@ struct FlatzincParameters {
   bool logging;
   bool statistics;
   bool verbose_impact;
-  double restart_log_size;
   bool run_all_heuristics;
   int heuristic_period;
   int log_period;
