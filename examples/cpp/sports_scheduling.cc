@@ -75,10 +75,6 @@ DEFINE_bool(run_all_heuristics, true,
 DEFINE_int32(heuristics_period, 30,
              "Frequency to run all heuristics, see DefaultPhaseParameters"
              " in constraint_solver/constraint_solver.h for details.");
-DEFINE_double(restart_log_size, 8.0,
-              "Threshold for automatic restarting the search in default phase,"
-              " see DefaultPhaseParameters in "
-              "constraint_solver/constraint_solver.h for details.");
 
 namespace operations_research {
 // ---------- Utility functions to help create the model ----------
@@ -348,7 +344,6 @@ void SportsScheduling(int num_teams) {
   DefaultPhaseParameters parameters;
   parameters.run_all_heuristics = FLAGS_run_all_heuristics;
   parameters.heuristic_period = FLAGS_heuristics_period;
-  parameters.restart_log_size = FLAGS_restart_log_size;
   DecisionBuilder* const db =
       solver.MakeDefaultPhase(all_signed_opponents, parameters);
 
