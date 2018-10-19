@@ -20,7 +20,7 @@
 #include <utility>
 
 #include "absl/strings/match.h"
-#include "absl/strings/numbers.h"  // for safe_strtod
+#include "absl/strings/numbers.h"
 #include "absl/strings/str_split.h"
 #include "ortools/base/callback.h"
 #include "ortools/base/commandlineflags.h"
@@ -31,8 +31,9 @@
 #include "ortools/base/status.h"
 #include "ortools/lp_data/lp_print_utils.h"
 
-DEFINE_bool(mps_free_form, false, "Read MPS files in free form.");
-DEFINE_bool(mps_stop_after_first_error, true, "Stop after the first error.");
+ABSL_FLAG(bool, mps_free_form, false, "Read MPS files in free form.");
+ABSL_FLAG(bool, mps_stop_after_first_error, true,
+          "Stop after the first error.");
 
 namespace operations_research {
 namespace glop {

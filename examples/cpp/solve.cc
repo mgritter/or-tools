@@ -174,11 +174,10 @@ void Run() {
   // Solve.
   MPSolverParameters param;
   MPSolver::ResultStatus solve_status = MPSolver::NOT_SOLVED;
-  double solving_time_in_sec = 0;
-  {
-    ScopedWallTime timer(&solving_time_in_sec);
-    solve_status = solver.Solve(param);
-  }
+  absl::Duration solving_time;
+  const absl::Time time_before = absl::Now();
+  solve_status = solver.Solve(param);
+  solving_time = absl::Now() - time_before;
 
   // If requested, re-create a corresponding MPModelRequest and save it to file.
   if (!FLAGS_dump_request.empty()) {
@@ -235,7 +234,7 @@ void Run() {
   if (solver.IsMIP()) {
     absl::PrintF("%-12s: %d\n", "Nodes", solver.nodes());
   }
-  printf("%-12s: %-6.4g\n", "Time", solving_time_in_sec);
+  printf("%-12s: %-6.4g\n", "Time", absl::ToDoubleSeconds(solving_time));
 }
 }  // namespace
 }  // namespace operations_research

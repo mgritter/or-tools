@@ -13,7 +13,7 @@
 
 // Typemaps for Routing Index Types. This does not define any type wrappings,
 // because these index types are are never exposed to the target language.
-// Instead, indices are manipulated as native target language types (e.g. Java
+// Instead, indices are manipulated as native target language types (e.g. C#
 // int).
 // This file is to be %included when wrapped objects need to use these typemaps.
 
@@ -75,3 +75,5 @@ DEFINE_INDEX_TYPE(operations_research::RoutingCostClassIndex);
 DEFINE_INDEX_TYPE(operations_research::RoutingDimensionIndex);
 DEFINE_INDEX_TYPE(operations_research::RoutingDisjunctionIndex);
 DEFINE_INDEX_TYPE(operations_research::RoutingVehicleClassIndex);
+
+%include "ortools/constraint_solver/routing_types.h"

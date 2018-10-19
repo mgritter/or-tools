@@ -38,8 +38,8 @@
 #include "ortools/lp_data/lp_data.h"
 #include "ortools/lp_data/lp_types.h"
 
-DECLARE_bool(mps_free_form);
-DECLARE_bool(mps_stop_after_first_error);
+ABSL_DECLARE_FLAG(bool, mps_free_form);
+ABSL_DECLARE_FLAG(bool, mps_stop_after_first_error);
 
 namespace operations_research {
 namespace glop {

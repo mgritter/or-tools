@@ -104,11 +104,8 @@ message ConstraintSolverParameters {
   //
   // Control the implementation of the table constraint.
   //
-  bool use_compact_table = 100;
   bool use_small_table = 101;
-  bool use_sat_table = 102;
-  int32 ac4r_table_threshold = 103;
-  bool use_mdd_table = 104;
+  reserved 100, 102, 103, 104;
 
   //
   // Control the propagation of the cumulative constraint.

@@ -74,6 +74,7 @@ def main():
 
   # Solve model.
   solver = cp_model.CpSolver()
+  solver.parameters.linearization_level=0
   status = solver.Solve(model)
 
   # Output solution.

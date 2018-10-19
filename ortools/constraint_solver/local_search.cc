@@ -2706,6 +2706,7 @@ IntVarLocalSearchFilter* Solver::MakeSumObjectiveFilter(
 class LocalSearchProfiler : public LocalSearchMonitor {
  public:
   explicit LocalSearchProfiler(Solver* solver) : LocalSearchMonitor(solver) {}
+  std::string DebugString() const override { return "LocalSearchProfiler"; }
   void RestartSearch() override {
     operator_stats_.clear();
     filter_stats_.clear();

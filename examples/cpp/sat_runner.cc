@@ -140,7 +140,7 @@ double GetScaledTrivialBestBound(const LinearBooleanProblem& problem) {
   return AddOffsetAndScaleObjectiveValue(problem, best_bound);
 }
 
-void LoadBooleanProblem(const std::string& filename,
+bool LoadBooleanProblem(const std::string& filename,
                         LinearBooleanProblem* problem, CpModelProto* cp_model) {
   if (absl::EndsWith(filename, ".opb") ||
       absl::EndsWith(filename, ".opb.bz2")) {
@@ -173,6 +173,7 @@ void LoadBooleanProblem(const std::string& filename,
     LOG(INFO) << "Reading a LinearBooleanProblem.";
     *problem = ReadFileToProtoOrDie<LinearBooleanProblem>(filename);
   }
+  return true;
 }
 
 std::string SolutionString(const LinearBooleanProblem& problem,
@@ -212,7 +213,12 @@ int Run() {
   // Read the problem.
   LinearBooleanProblem problem;
   CpModelProto cp_model;
-  LoadBooleanProblem(FLAGS_input, &problem, &cp_model);
+  if (!LoadBooleanProblem(FLAGS_input, &problem, &cp_model)) {
+    CpSolverResponse response;
+    response.set_status(CpSolverStatus::MODEL_INVALID);
+    LOG(INFO) << CpSolverResponseStats(response);
+    return EXIT_SUCCESS;
+  }
   if (FLAGS_use_cp_model && cp_model.variables_size() == 0) {
     LOG(INFO) << "Converting to CpModelProto ...";
     cp_model = BooleanProblemToCpModelproto(problem);

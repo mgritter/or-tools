@@ -655,7 +655,8 @@ MPSolver::ResultStatus GurobiInterface::Solve(const MPSolverParameters& param) {
   ExtractModel();
   // Sync solver.
   CheckedGurobiCall(GRBupdatemodel(model_));
-  VLOG(1) << absl::StrFormat("Model built in %.3f seconds.", timer.Get());
+  VLOG(1) << absl::StrFormat("Model built in %s.",
+                             absl::FormatDuration(timer.GetDuration()));
 
   // Set solution hints if any.
   for (const std::pair<MPVariable*, double>& p : solver_->solution_hint_) {
@@ -686,7 +687,8 @@ MPSolver::ResultStatus GurobiInterface::Solve(const MPSolverParameters& param) {
   if (status) {
     VLOG(1) << "Failed to optimize MIP." << GRBgeterrormsg(env_);
   } else {
-    VLOG(1) << absl::StrFormat("Solved in %.3f seconds.", timer.Get());
+    VLOG(1) << absl::StrFormat("Solved in %s.",
+                               absl::FormatDuration(timer.GetDuration()));
   }
 
   // Get the status.

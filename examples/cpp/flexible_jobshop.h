@@ -52,7 +52,7 @@ namespace operations_research {
 class FlexibleJobShopData {
  public:
   // A task is the basic block of a jobshop.
-  // The diference in a flexible jobshop is that a task has a list of machine
+  // The difference in a flexible jobshop is that a task has a list of machine
   // on which it can be scheduled (with possibly not the same duration).
   struct Task {
     Task(int j, const std::vector<int>& m, const std::vector<int>& d)

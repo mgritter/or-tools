@@ -307,7 +307,9 @@ Status RevisedSimplex::Solve(const LinearProgram& lp, TimeLimit* time_limit) {
         VLOG(1) << "OPTIMAL was reported, yet one of the residuals is "
                    "above the solution feasibility tolerance after the "
                    "shift/perturbation are removed.";
-        problem_status_ = ProblemStatus::IMPRECISE;
+        if (parameters_.change_status_to_imprecise()) {
+          problem_status_ = ProblemStatus::IMPRECISE;
+        }
       } else {
         // We use the "precise" tolerances here to try to report the best
         // possible solution.
@@ -324,7 +326,9 @@ Status RevisedSimplex::Solve(const LinearProgram& lp, TimeLimit* time_limit) {
           VLOG(1) << "OPTIMAL was reported, yet both of the infeasibility "
                      "are above the tolerance after the "
                      "shift/perturbation are removed.";
-          problem_status_ = ProblemStatus::IMPRECISE;
+          if (parameters_.change_status_to_imprecise()) {
+            problem_status_ = ProblemStatus::IMPRECISE;
+          }
         } else if (primal_infeasibility > primal_tolerance) {
           VLOG(1) << "Re-optimizing with dual simplex ... ";
           problem_status_ = ProblemStatus::DUAL_FEASIBLE;

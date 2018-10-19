@@ -4163,6 +4163,7 @@ class SolutionCollector : public SearchMonitor {
   SolutionCollector(Solver* const solver, const Assignment* assignment);
   explicit SolutionCollector(Solver* const solver);
   ~SolutionCollector() override;
+  std::string DebugString() const override { return "SolutionCollector"; }
 
   // Add API.
   void Add(IntVar* const var);

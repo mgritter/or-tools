@@ -59,12 +59,8 @@ DEFINE_bool(cp_print_local_search_profile, false,
 DEFINE_bool(cp_name_variables, false, "Force all variables to have names.");
 DEFINE_bool(cp_name_cast_variables, false,
             "Name variables casted from expressions");
-DEFINE_bool(cp_use_compact_table, true,
-            "Use compact table constraint when possible.");
 DEFINE_bool(cp_use_small_table, true,
             "Use small compact table constraint when possible.");
-DEFINE_bool(cp_use_sat_table, false,
-            "If true, use a SAT constraint for all table constraints.");
 DEFINE_bool(cp_use_cumulative_edge_finder, true,
             "Use the O(n log n) cumulative edge finding algorithm described "
             "in 'Edge Finding Filtering Algorithm for Discrete  Cumulative "

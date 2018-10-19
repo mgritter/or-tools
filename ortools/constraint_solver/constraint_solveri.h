@@ -1585,6 +1585,7 @@ class PropagationMonitor : public SearchMonitor {
  public:
   explicit PropagationMonitor(Solver* const solver);
   ~PropagationMonitor() override;
+  std::string DebugString() const override { return "PropagationMonitor"; }
 
   // Propagation events.
   virtual void BeginConstraintInitialPropagation(
@@ -1651,6 +1652,7 @@ class LocalSearchMonitor : public SearchMonitor {
  public:
   explicit LocalSearchMonitor(Solver* const solver);
   ~LocalSearchMonitor() override;
+  std::string DebugString() const override { return "LocalSearchMonitor"; }
 
   // Local search operator events.
   virtual void BeginOperatorStart() = 0;

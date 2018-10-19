@@ -67,26 +67,6 @@ const IntegerValue kMaxIntegerValue(
     std::numeric_limits<IntegerValue::ValueType>::max() - 1);
 const IntegerValue kMinIntegerValue(-kMaxIntegerValue);
 
-// IntegerValue version of the function in saturated_arithmetic.h
-//
-// The functions are not "sticky" to the min/max possible values so it is up to
-// us to properly use them so that we never get an overflow and then go back to
-// a feasible value. Hence the DCHECK().
-inline IntegerValue CapAdd(IntegerValue a, IntegerValue b) {
-  DCHECK(a >= kMinIntegerValue || b <= 0) << "Adding wrong sign to overflow.";
-  DCHECK(a <= kMaxIntegerValue || b >= 0) << "Adding wrong sign to overflow.";
-  DCHECK(b >= kMinIntegerValue || a <= 0) << "Adding wrong sign to overflow.";
-  DCHECK(b <= kMaxIntegerValue || a >= 0) << "Adding wrong sign to overflow.";
-  return IntegerValue(operations_research::CapAdd(a.value(), b.value()));
-}
-inline IntegerValue CapSub(IntegerValue a, IntegerValue b) {
-  DCHECK(a >= kMinIntegerValue || b >= 0) << "Adding wrong sign to overflow.";
-  DCHECK(a <= kMaxIntegerValue || b <= 0) << "Adding wrong sign to overflow.";
-  DCHECK(b >= kMinIntegerValue || a >= 0) << "Adding wrong sign to overflow.";
-  DCHECK(b <= kMaxIntegerValue || a <= 0) << "Adding wrong sign to overflow.";
-  return IntegerValue(operations_research::CapSub(a.value(), b.value()));
-}
-
 // Index of an IntegerVariable.
 //
 // Each time we create an IntegerVariable we also create its negation. This is
@@ -540,9 +520,15 @@ class IntegerTrail : public SatPropagator {
   // analysis where we can be smarter in how we relax the reason. Note however
   // that this function is mainly used when we have a conflict, so this is not
   // really high priority.
+  //
+  // TODO(user): Test that the code work in the presence of integer overflow.
   void RelaxLinearReason(IntegerValue slack,
                          absl::Span<const IntegerValue> coeffs,
                          std::vector<IntegerLiteral>* reason) const;
+
+  // Removes from the reasons the literal that are always true.
+  // This is mainly useful for experiments/testing.
+  void RemoveLevelZeroBounds(std::vector<IntegerLiteral>* reason) const;
 
   // Enqueue new information about a variable bound. Calling this with a less
   // restrictive bound than the current one will have no effect.

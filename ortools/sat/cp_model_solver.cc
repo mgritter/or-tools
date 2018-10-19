@@ -1830,15 +1830,15 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
                               int linearization_level,
                               std::vector<LinearConstraint>* linear_constraints,
                               std::vector<std::vector<Literal>>* at_most_ones) {
-  const double kInfinity = std::numeric_limits<double>::infinity();
   if (ct.constraint_case() == ConstraintProto::ConstraintCase::kBoolOr) {
     if (linearization_level < 2) return;
-    LinearConstraintBuilder lc(m->model(), 1.0, kInfinity);
+    LinearConstraintBuilder lc(m->model(), IntegerValue(1), kMaxIntegerValue);
     for (const int enforcement_ref : ct.enforcement_literal()) {
-      CHECK(lc.AddLiteralTerm(m->Literal(NegatedRef(enforcement_ref)), 1.0));
+      CHECK(lc.AddLiteralTerm(m->Literal(NegatedRef(enforcement_ref)),
+                              IntegerValue(1)));
     }
     for (const int ref : ct.bool_or().literals()) {
-      CHECK(lc.AddLiteralTerm(m->Literal(ref), 1.0));
+      CHECK(lc.AddLiteralTerm(m->Literal(ref), IntegerValue(1)));
     }
     linear_constraints->push_back(lc.Build());
   } else if (ct.constraint_case() ==
@@ -1854,11 +1854,12 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
     }
     for (const int ref : ct.bool_and().literals()) {
       // Same as the clause linearization above.
-      LinearConstraintBuilder lc(m->model(), 1.0, kInfinity);
+      LinearConstraintBuilder lc(m->model(), IntegerValue(1), kMaxIntegerValue);
       for (const int enforcement_ref : ct.enforcement_literal()) {
-        CHECK(lc.AddLiteralTerm(m->Literal(NegatedRef(enforcement_ref)), 1.0));
+        CHECK(lc.AddLiteralTerm(m->Literal(NegatedRef(enforcement_ref)),
+                                IntegerValue(1)));
       }
-      CHECK(lc.AddLiteralTerm(m->Literal(ref), 1.0));
+      CHECK(lc.AddLiteralTerm(m->Literal(ref), IntegerValue(1)));
       linear_constraints->push_back(lc.Build());
     }
   } else if (ct.constraint_case() ==
@@ -1876,9 +1877,9 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
       // This deal with the corner case X = max(X, Y, Z, ..) !
       // Note that this can be presolved into X >= Y, X >= Z, ...
       if (target == var) continue;
-      LinearConstraintBuilder lc(m->model(), -kInfinity, 0.0);
-      lc.AddTerm(m->Integer(var), 1.0);
-      lc.AddTerm(m->Integer(target), -1.0);
+      LinearConstraintBuilder lc(m->model(), kMinIntegerValue, IntegerValue(0));
+      lc.AddTerm(m->Integer(var), IntegerValue(1));
+      lc.AddTerm(m->Integer(target), IntegerValue(-1));
       linear_constraints->push_back(lc.Build());
     }
   } else if (ct.constraint_case() == ConstraintProto::ConstraintCase::kIntMin) {
@@ -1886,9 +1887,9 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
     const int target = ct.int_min().target();
     for (const int var : ct.int_min().vars()) {
       if (target == var) continue;
-      LinearConstraintBuilder lc(m->model(), -kInfinity, 0.0);
-      lc.AddTerm(m->Integer(target), 1.0);
-      lc.AddTerm(m->Integer(var), -1.0);
+      LinearConstraintBuilder lc(m->model(), kMinIntegerValue, IntegerValue(0));
+      lc.AddTerm(m->Integer(target), IntegerValue(1));
+      lc.AddTerm(m->Integer(var), IntegerValue(-1));
       linear_constraints->push_back(lc.Build());
     }
   } else if (ct.constraint_case() ==
@@ -1902,9 +1903,9 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
     // we should probably also add x >= -y, but then this do not happen in
     // our test set.
     if (size == 2 && ct.int_prod().vars(0) == ct.int_prod().vars(1)) {
-      LinearConstraintBuilder lc(m->model(), -kInfinity, 0.0);
-      lc.AddTerm(m->Integer(ct.int_prod().vars(0)), 1.0);
-      lc.AddTerm(m->Integer(target), -1.0);
+      LinearConstraintBuilder lc(m->model(), kMinIntegerValue, IntegerValue(0));
+      lc.AddTerm(m->Integer(ct.int_prod().vars(0)), IntegerValue(1));
+      lc.AddTerm(m->Integer(target), IntegerValue(-1));
       linear_constraints->push_back(lc.Build());
     }
   } else if (ct.constraint_case() == ConstraintProto::ConstraintCase::kLinear) {
@@ -1915,18 +1916,17 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
     // possible.
     //
     // TODO(user): process the "at most one" part of a == 1 separately?
-    const int64 min = ct.linear().domain(0);
-    const int64 max = ct.linear().domain(ct.linear().domain_size() - 1);
+    const IntegerValue min = IntegerValue(ct.linear().domain(0));
+    const IntegerValue max =
+        IntegerValue(ct.linear().domain(ct.linear().domain_size() - 1));
     if (min == kint64min && max == kint64max) return;
 
     if (!HasEnforcementLiteral(ct)) {
-      LinearConstraintBuilder lc(m->model(),
-                                 (min == kint64min) ? -kInfinity : min,
-                                 (max == kint64max) ? kInfinity : max);
+      LinearConstraintBuilder lc(m->model(), min, max);
       for (int i = 0; i < ct.linear().vars_size(); i++) {
         const int ref = ct.linear().vars(i);
         const int64 coeff = ct.linear().coeffs(i);
-        lc.AddTerm(m->Integer(ref), coeff);
+        lc.AddTerm(m->Integer(ref), IntegerValue(coeff));
       }
       linear_constraints->push_back(lc.Build());
       return;
@@ -1938,45 +1938,41 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
     if (linearization_level < 3) return;
 
     // Compute the implied bounds on the linear expression.
-    double implied_lb = 0.0;
-    double implied_ub = 0.0;
+    IntegerValue implied_lb(0);
+    IntegerValue implied_ub(0);
     for (int i = 0; i < ct.linear().vars_size(); i++) {
       int ref = ct.linear().vars(i);
-      double coeff = static_cast<double>(ct.linear().coeffs(i));
+      IntegerValue coeff(ct.linear().coeffs(i));
       if (!RefIsPositive(ref)) {
         ref = PositiveRef(ref);
         coeff -= coeff;
       }
       const IntegerVariableProto& p = model_proto.variables(ref);
       if (coeff > 0.0) {
-        implied_lb += coeff * static_cast<double>(p.domain(0));
-        implied_ub +=
-            coeff * static_cast<double>(p.domain(p.domain_size() - 1));
+        implied_lb += coeff * IntegerValue(p.domain(0));
+        implied_ub += coeff * IntegerValue(p.domain(p.domain_size() - 1));
       } else {
-        implied_lb +=
-            coeff * static_cast<double>(p.domain(p.domain_size() - 1));
-        implied_ub += coeff * static_cast<double>(p.domain(0));
+        implied_lb += coeff * IntegerValue(p.domain(p.domain_size() - 1));
+        implied_ub += coeff * IntegerValue(p.domain(0));
       }
     }
     const int e = ct.enforcement_literal(0);
     if (min != kint64min) {
       // (e => terms >= min) <=> terms >= implied_lb + e * (min - implied_lb);
-      LinearConstraintBuilder lc(m->model(), implied_lb, kInfinity);
+      LinearConstraintBuilder lc(m->model(), implied_lb, kMaxIntegerValue);
       for (int i = 0; i < ct.linear().vars_size(); i++) {
         const int ref = ct.linear().vars(i);
-        const int64 coeff = ct.linear().coeffs(i);
-        lc.AddTerm(m->Integer(ref), coeff);
+        lc.AddTerm(m->Integer(ref), IntegerValue(ct.linear().coeffs(i)));
       }
       CHECK(lc.AddLiteralTerm(m->Literal(e), implied_lb - min));
       linear_constraints->push_back(lc.Build());
     }
     if (max != kint64max) {
       // (e => terms <= max) <=> terms <= implied_ub + e * (max - implied_ub)
-      LinearConstraintBuilder lc(m->model(), -kInfinity, implied_ub);
+      LinearConstraintBuilder lc(m->model(), kMinIntegerValue, implied_ub);
       for (int i = 0; i < ct.linear().vars_size(); i++) {
         const int ref = ct.linear().vars(i);
-        const int64 coeff = ct.linear().coeffs(i);
-        lc.AddTerm(m->Integer(ref), coeff);
+        lc.AddTerm(m->Integer(ref), IntegerValue(ct.linear().coeffs(i)));
       }
       CHECK(lc.AddLiteralTerm(m->Literal(e), implied_ub - max));
       linear_constraints->push_back(lc.Build());
@@ -2007,9 +2003,10 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
       for (const auto& entry : *node_map) {
         const std::vector<Literal>& exactly_one = entry.second;
         if (exactly_one.size() > 1) {
-          LinearConstraintBuilder at_least_one_lc(m->model(), 1, kInfinity);
+          LinearConstraintBuilder at_least_one_lc(m->model(), IntegerValue(1),
+                                                  kMaxIntegerValue);
           for (const Literal l : exactly_one) {
-            CHECK(at_least_one_lc.AddLiteralTerm(l, 1.0));
+            CHECK(at_least_one_lc.AddLiteralTerm(l, IntegerValue(1)));
           }
 
           // We separate the two constraints.
@@ -2026,16 +2023,18 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
 
     // We only relax the case where all the vars are constant.
     // target = sum (index == i) * fixed_vars[i].
-    LinearConstraintBuilder constraint(m->model(), 0.0, 0.0);
-    constraint.AddTerm(target, -1.0);
+    LinearConstraintBuilder constraint(m->model(), IntegerValue(0),
+                                       IntegerValue(0));
+    constraint.AddTerm(target, IntegerValue(-1));
+    IntegerTrail* integer_trail = m->GetOrCreate<IntegerTrail>();
     for (const auto literal_value : m->Add(FullyEncodeVariable((index)))) {
       const IntegerVariable var = vars[literal_value.value.value()];
       if (!m->Get(IsFixed(var))) return;
 
       // Make sure this literal has a view.
       m->Add(NewIntegerVariableFromLiteral(literal_value.literal));
-      CHECK(
-          constraint.AddLiteralTerm(literal_value.literal, m->Get(Value(var))));
+      CHECK(constraint.AddLiteralTerm(literal_value.literal,
+                                      integer_trail->LowerBound(var)));
     }
 
     linear_constraints->push_back(constraint.Build());
@@ -2178,12 +2177,12 @@ IntegerVariable AddLPConstraints(const CpModelProto& model_proto,
       &at_most_ones);
   for (const std::vector<Literal>& at_most_one : at_most_ones) {
     if (at_most_one.empty()) continue;
-    const double kInfinity = std::numeric_limits<double>::infinity();
-    LinearConstraintBuilder lc(m->model(), -kInfinity, 1.0);
+    LinearConstraintBuilder lc(m->model(), kMinIntegerValue, IntegerValue(1));
     for (const Literal literal : at_most_one) {
       // Note that it is okay to simply ignore the literal if it has no
       // integer view.
-      const bool unused ABSL_ATTRIBUTE_UNUSED = lc.AddLiteralTerm(literal, 1.0);
+      const bool unused ABSL_ATTRIBUTE_UNUSED =
+          lc.AddLiteralTerm(literal, IntegerValue(1));
     }
     linear_constraints.push_back(lc.Build());
   }
@@ -2306,8 +2305,8 @@ IntegerVariable AddLPConstraints(const CpModelProto& model_proto,
       const int64 coeff = model_proto.objective().coeffs(i);
       const int id = components.GetClassRepresentative(get_var_index(var));
       if (gtl::ContainsKey(representative_to_lp_constraint, id)) {
-        representative_to_lp_constraint[id]->SetObjectiveCoefficient(var,
-                                                                     coeff);
+        representative_to_lp_constraint[id]->SetObjectiveCoefficient(
+            var, IntegerValue(coeff));
         representative_to_cp_terms[id].push_back(std::make_pair(var, coeff));
       } else {
         // Component is too small. We still need to store the objective term.
@@ -2334,8 +2333,8 @@ IntegerVariable AddLPConstraints(const CpModelProto& model_proto,
   // Register LP constraints. Note that this needs to be done after all the
   // constraints have been added.
   for (auto* lp_constraint : lp_constraints) {
-    VLOG(2) << "LP constraint: " << lp_constraint->DimensionString() << ".";
     lp_constraint->RegisterWith(m->model());
+    VLOG(2) << "LP constraint: " << lp_constraint->DimensionString() << ".";
   }
 
   VLOG(2) << top_level_cp_terms.size()

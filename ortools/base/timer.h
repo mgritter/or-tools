@@ -45,6 +45,9 @@ class WallTimer {
   double Get() const { return GetNanos() * 1e-9; }
   int64 GetInMs() const { return GetNanos() / 1000000; }
   int64 GetInUsec() const { return GetNanos() / 1000; }
+  inline absl::Duration GetDuration() const {
+    return absl::Nanoseconds(GetNanos());
+  }
 
  protected:
   int64 GetNanos() const {

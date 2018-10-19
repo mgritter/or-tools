@@ -1488,7 +1488,7 @@ yyreduce:
 
       for (int i = 0; i < num_vars; ++i) {
         const std::string var_name =
-            absl::StrFormat("%s[%d]", identifier.c_str(), i + 1);
+            absl::StrFormat("%s[%d]", identifier, i + 1);
         if (assignments == nullptr) {
           vars[i] = model->AddVariable(var_name, domain, introduced);
         } else if (assignments->variables[i] == nullptr) {

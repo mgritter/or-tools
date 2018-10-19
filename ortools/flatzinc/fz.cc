@@ -60,7 +60,7 @@ namespace operations_research {
 namespace fz {
 
 void FixAndParseParameters(int* argc, char*** argv) {
-  FLAGS_log_prefix = false;
+  absl::SetFlag(&FLAGS_log_prefix, false);
 
   char all_param[] = "--all_solutions";
   char free_param[] = "--free_search";

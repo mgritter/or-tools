@@ -694,7 +694,12 @@ void IntegerTrail::RelaxLinearReason(
       if (best_i != -1 && indices[i] < indices[best_i]) continue;
       const TrailEntry& entry = integer_trail_[indices[i]];
       const TrailEntry& previous_entry = integer_trail_[entry.prev_trail_index];
-      if (coeffs[i] * (entry.bound - previous_entry.bound) > slack) continue;
+
+      // Note that both terms of the product are positive.
+      if (CapProd(coeffs[i].value(),
+                  (entry.bound - previous_entry.bound).value()) > slack) {
+        continue;
+      }
       best_i = i;
     }
     if (best_i == -1) return;
@@ -705,6 +710,16 @@ void IntegerTrail::RelaxLinearReason(
     (*reason)[best_i].bound = previous_entry.bound;
     slack -= coeffs[best_i] * (entry.bound - previous_entry.bound);
   }
+}
+
+void IntegerTrail::RemoveLevelZeroBounds(
+    std::vector<IntegerLiteral>* reason) const {
+  int new_size = 0;
+  for (const IntegerLiteral literal : *reason) {
+    if (literal.bound <= LevelZeroBound(literal.var)) continue;
+    (*reason)[new_size++] = literal;
+  }
+  reason->resize(new_size);
 }
 
 bool IntegerTrail::EnqueueAssociatedLiteral(

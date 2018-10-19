@@ -1200,7 +1200,6 @@ class TransitionConstraint : public Constraint {
       tmp_vars[1] = vars_[var_index];
       tmp_vars[2] = states[var_index + 1];
       // We always build the compact versions of the tables.
-      const ConstraintSolverParameters& params = solver()->parameters();
       if (num_tuples <= kBitsInUint64) {
         s->AddConstraint(s->RevAlloc(new SmallCompactPositiveTableConstraint(
             s, tmp_vars, transition_table_)));
@@ -1253,7 +1252,7 @@ const int TransitionConstraint::kTransitionTupleSize = 3;
 
 Constraint* Solver::MakeAllowedAssignments(const std::vector<IntVar*>& vars,
                                            const IntTupleSet& tuples) {
-  if (parameters_.use_compact_table() && HasCompactDomains(vars)) {
+  if (HasCompactDomains(vars)) {
     if (tuples.NumTuples() < kBitsInUint64 && parameters_.use_small_table()) {
       return RevAlloc(
           new SmallCompactPositiveTableConstraint(this, vars, tuples));

@@ -1485,7 +1485,7 @@ class DisjunctivePropagator {
   std::vector<int> event_of_task_;
   std::vector<int> nonchain_tasks_by_start_max_;
 };
-#endif
+#endif  // !defined(SWIG)
 
 // GlobalVehicleBreaksConstraint ensures breaks constraints are enforced on
 // all vehicles in the dimension passed to its constructor.

@@ -533,23 +533,15 @@ class MPSolver {
   void EnableOutput();
   void SuppressOutput();
 
-  void set_time_limit(int64 time_limit_milliseconds) {
-    DCHECK_GE(time_limit_milliseconds, 0);
-    time_limit_ = time_limit_milliseconds;
+  absl::Duration TimeLimit() const { return time_limit_; }
+  void SetTimeLimit(absl::Duration time_limit) {
+    DCHECK_GE(time_limit, absl::ZeroDuration());
+    time_limit_ = time_limit;
   }
 
-  // In milliseconds.
-  int64 time_limit() const { return time_limit_; }
-
-  // In seconds. Note that this returns a double.
-  double time_limit_in_secs() const {
-    // static_cast<double> avoids a warning with -Wreal-conversion. This
-    // helps catching bugs with unwanted conversions from double to ints.
-    return static_cast<double>(time_limit_) / 1000.0;
+  absl::Duration DurationSinceConstruction() const {
+    return absl::Now() - construction_time_;
   }
-
-  // Returns wall_time() in milliseconds since the creation of the solver.
-  int64 wall_time() const { return timer_.GetInMs(); }
 
   // Returns the number of simplex iterations.
   int64 iterations() const;
@@ -610,6 +602,28 @@ class MPSolver {
   // linear_solver_underlying_gurobi_test for an example of how to configure
   // Gurobi for this purpose. The other solvers return false unconditionally.
   ABSL_MUST_USE_RESULT bool NextSolution();
+
+  // DEPRECATED: Use TimeLimit() and SetTimeLimit(absl::Duration) instead.
+  // NOTE: These deprecated functions used the convention time_limit = 0 to mean
+  // "no limit", which now corresponds to time_limit_ = InfiniteDuration().
+  int64 time_limit() const {
+    return time_limit_ == absl::InfiniteDuration()
+               ? 0
+               : absl::ToInt64Milliseconds(time_limit_);
+  }
+  void set_time_limit(int64 time_limit_milliseconds) {
+    SetTimeLimit(time_limit_milliseconds == 0
+                     ? absl::InfiniteDuration()
+                     : absl::Milliseconds(time_limit_milliseconds));
+  }
+  double time_limit_in_secs() const {
+    return static_cast<double>(time_limit()) / 1000.0;
+  }
+
+  // DEPRECATED: Use DurationSinceConstruction() instead.
+  int64 wall_time() const {
+    return absl::ToInt64Milliseconds(DurationSinceConstruction());
+  }
 
   friend class GLPKInterface;
   friend class CLPInterface;
@@ -683,10 +697,9 @@ class MPSolver {
   // hint is provided and a std::vector<double> for the hint value.
   std::vector<std::pair<MPVariable*, double> > solution_hint_;
 
-  // Time limit in milliseconds (0 = no limit).
-  int64 time_limit_;
+  absl::Duration time_limit_ = absl::InfiniteDuration();  // Default = No limit.
 
-  WallTimer timer_;
+  const absl::Time construction_time_;
 
   // Permanent storage for SetSolverSpecificParametersAsString().
   std::string solver_specific_parameter_string_;

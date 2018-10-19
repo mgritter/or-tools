@@ -257,34 +257,6 @@ class SatConstraint : public Constraint {
   DISALLOW_COPY_AND_ASSIGN(SatConstraint);
 };
 
-class SatTableConstraint : public Constraint {
- public:
-  // Note that we need to copy the arguments.
-  SatTableConstraint(Solver* s, const std::vector<IntVar*>& vars,
-                     const IntTupleSet& tuples)
-      : Constraint(s), vars_(vars), tuples_(tuples), sat_constraint_(s) {}
-
-  void Post() override;
-  void InitialPropagate() override { sat_constraint_.InitialPropagate(); }
-
- private:
-  const std::vector<IntVar*> vars_;
-  const IntTupleSet tuples_;
-
-  // TODO(user): share this between different constraint. We need to pay
-  // attention and call Post()/InitialPropagate() after all other constraint
-  // have been posted though.
-  SatConstraint sat_constraint_;
-
-  DISALLOW_COPY_AND_ASSIGN(SatTableConstraint);
-};
-
-inline Constraint* BuildSatTableConstraint(Solver* solver,
-                                           const std::vector<IntVar*>& vars,
-                                           const IntTupleSet& tuples) {
-  return solver->RevAlloc(new SatTableConstraint(solver, vars, tuples));
-}
-
 }  // namespace operations_research
 
 #endif  // OR_TOOLS_CONSTRAINT_SOLVER_SAT_CONSTRAINT_H_

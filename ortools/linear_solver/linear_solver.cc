@@ -407,8 +407,7 @@ MPSolver::MPSolver(const std::string& name,
                    OptimizationProblemType problem_type)
     : name_(name),
       problem_type_(DetourProblemType(problem_type)),
-      time_limit_(0.0) {
-  timer_.Restart();
+      construction_time_(absl::Now()) {
   interface_.reset(BuildSolverInterface(this));
   if (FLAGS_linear_solver_enable_verbose_output) {
     EnableOutput();
@@ -663,13 +662,8 @@ void MPSolver::SolveWithProto(const MPModelRequest& model_request,
     return;
   }
   if (model_request.has_solver_time_limit_seconds()) {
-    double time_limit_ms = model_request.solver_time_limit_seconds() * 1000.0;
-    if (time_limit_ms <
-        static_cast<double>(std::numeric_limits<int64>::max())) {
-      // static_cast<int64> avoids a warning with -Wreal-conversion. This
-      // helps catching bugs with unwanted conversions from double to ints.
-      solver.set_time_limit(static_cast<int64>(time_limit_ms));
-    }
+    solver.SetTimeLimit(
+        absl::Seconds(model_request.solver_time_limit_seconds()));
   }
   solver.SetSolverSpecificParametersAsString(
       model_request.solver_specific_parameters());

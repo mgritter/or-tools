@@ -64,7 +64,9 @@ using operations_research::glop::ToDouble;
 void ReadGlopParameters(GlopParameters* parameters) {
   if (!FLAGS_params_file.empty()) {
     std::string params;
-    CHECK(TextFormat::ParseFromString(params, parameters)) << params;
+    CHECK_OK(file::GetContents(FLAGS_params_file, &params, file::Defaults()));
+    CHECK(TextFormat::MergeFromString(params, parameters))
+        << FLAGS_params;
   }
   if (!FLAGS_params.empty()) {
     CHECK(TextFormat::MergeFromString(FLAGS_params, parameters))
@@ -98,7 +100,7 @@ int main(int argc, char* argv[]) {
         continue;
       }
     } else {
-      file::ReadFileToProto(file_name, &model_proto);
+      ReadFileToProto(file_name, &model_proto);
       MPModelProtoToLinearProgram(model_proto, &linear_program);
     }
     if (FLAGS_mps_dump_problem) {

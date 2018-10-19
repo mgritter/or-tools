@@ -4263,8 +4263,6 @@ void RoutingModel::CreateFirstSolutionDecisionBuilders(
       solver_->MakeLocalSearchPhaseParameters(CreateInsertionOperator(),
                                               finalize, ls_limit,
                                               GetOrCreateLocalSearchFilters());
-  std::vector<SearchMonitor*> monitors;
-  monitors.push_back(GetOrCreateLimit());
   std::vector<IntVar*> decision_vars = nexts_;
   if (!CostsAreHomogeneousAcrossVehicles()) {
     decision_vars.insert(decision_vars.end(), vehicle_vars_.begin(),
@@ -4275,8 +4273,8 @@ void RoutingModel::CreateFirstSolutionDecisionBuilders(
           solver_->MakeLocalSearchPhase(
               decision_vars, solver_->RevAlloc(new AllUnperformed(this)),
               insertion_parameters),
-          GetOrCreateAssignment(), false, search_parameters.optimization_step(),
-          monitors);
+          GetOrCreateAssignment(), false,
+          search_parameters.optimization_step());
   first_solution_decision_builders_[FirstSolutionStrategy::BEST_INSERTION] =
       solver_->Compose(first_solution_decision_builders_
                            [FirstSolutionStrategy::BEST_INSERTION],
@@ -4958,7 +4956,7 @@ void GlobalVehicleBreaksConstraint::PropagateVehicle(int vehicle) {
       dimension_->GetNodeVisitTransitsOfVehicle(vehicle);
   // External loop: browse all arcs from start of vehicle.
   int64 current = model_->Start(vehicle);
-  while (current != model_->End(vehicle)) {
+  while (!model_->IsEnd(current)) {
     if (!model_->NextVar(current)->Bound()) break;
     const int64 next = model_->NextVar(current)->Min();
     const int64 current_start_max = dimension_->CumulVar(current)->Max();
