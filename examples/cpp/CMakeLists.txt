@@ -64,7 +64,6 @@ foreach(EXECUTABLE
 		linear_solver_protocol_buffers
 		ls_api
 		magic_square
-		model_util
 		mps_driver
 		multidim_knapsack
 		network_routing
@@ -107,7 +106,6 @@ foreach(TEST
 		linear_solver_protocol_buffers
 		ls_api
 		magic_square
-		#model_util
 		mps_driver
 		#multidim_knapsack
 		#network_routing
