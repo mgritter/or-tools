@@ -30,7 +30,6 @@
 #include <vector>
 
 #include "absl/strings/str_cat.h"
-#include "ortools/base/callback.h"
 #include "ortools/base/int_type.h"
 #include "ortools/base/int_type_indexed_vector.h"
 #include "ortools/base/logging.h"
@@ -39,17 +38,15 @@
 namespace operations_research {
 
 // Finds all maximal cliques, even of size 1, in the
-// graph described by the graph callback. graph->Run(i, j) indicates
+// graph described by the graph callback. graph(i, j) indicates
 // if there is an arc between i and j.
-// This function takes ownership of 'callback' and deletes it after it has run.
 // If 'callback' returns true, then the search for cliques stops.
 void FindCliques(std::function<bool(int, int)> graph, int node_count,
                  std::function<bool(const std::vector<int>&)> callback);
 
 // Covers the maximum number of arcs of the graph with cliques. The graph
-// is described by the graph callback. graph->Run(i, j) indicates if
+// is described by the graph callback. graph(i, j) indicates if
 // there is an arc between i and j.
-// This function takes ownership of 'callback' and deletes it after it has run.
 // It calls 'callback' upon each clique.
 // It ignores cliques of size 1.
 void CoverArcsByCliques(std::function<bool(int, int)> graph, int node_count,
