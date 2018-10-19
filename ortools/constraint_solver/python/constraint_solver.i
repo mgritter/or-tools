@@ -1066,11 +1066,6 @@ namespace operations_research {
 //
 // - state()
 //
-// - ExportModel()
-// - LoadModel()
-// - UpgradeModel()
-//
-//
 // - DebugString()
 // - VirtualMemorySize()
 // - SetClock()

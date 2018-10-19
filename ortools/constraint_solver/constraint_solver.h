@@ -99,8 +99,6 @@ class CpArgument;
 class CpConstraint;
 class CpIntegerExpression;
 class CpIntervalVariable;
-class CpModelLoader;
-class CpModel;
 class CpSequenceVariable;
 class CastConstraint;
 class Constraint;
@@ -127,8 +125,6 @@ class LocalSearchOperator;
 class LocalSearchPhaseParameters;
 class ModelCache;
 class ModelVisitor;
-class NoGoodManager;
-class NoGoodTerm;
 class OptimizeVar;
 class Pack;
 class PropagationBaseObject;
@@ -202,23 +198,9 @@ struct DefaultPhaseParameters {
   // Seed used to initialize the random part in some heuristics.
   int random_seed;
 
-  // Automatic Restart Size. When diving down, the size of the search
-  // space disminishes. We maintain the minimal log of the size of the search
-  // space with the following behavior:
-  //   - A failure is ignored (no null size).
-  //   - A solution has a size of 1 (and a log of 0).
-  // Then when backtracking, if the current log of the size of the search space
-  // is greater than the minimal log size recorded + 'restart_log_size', then
-  // the search is restarted from scratch. A parameter < 0 means no restart.
-  // A parameter of 0 indicates that we restart after each failure.
-  double restart_log_size;
-
   // This represents the amount of information displayed by the default search.
   // NONE means no display, VERBOSE means extra information.
   DisplayLevel display_level;
-
-  // Should we use Nogoods when restarting. The default is false.
-  bool use_no_goods;
 
   // Should we use last conflict method. The default is false.
   bool use_last_conflict;
@@ -751,18 +733,6 @@ class Solver {
   typedef std::function<void(Solver*)> Action;
   typedef std::function<void()> Closure;
 
-// TODO(user): Remove all these SWIG protected code, move to .i.
-#ifndef SWIG
-  typedef std::function<IntExpr*(CpModelLoader*, const CpIntegerExpression&)>
-      IntegerExpressionBuilder;
-  typedef std::function<Constraint*(CpModelLoader*, const CpConstraint&)>
-      ConstraintBuilder;
-  typedef std::function<IntervalVar*(CpModelLoader*, const CpIntervalVariable&)>
-      IntervalVariableBuilder;
-  typedef std::function<SequenceVar*(CpModelLoader*, const CpSequenceVariable&)>
-      SequenceVariableBuilder;
-#endif  // SWIG
-
   // Solver API
   explicit Solver(const std::string& name);
   Solver(const std::string& name, const ConstraintSolverParameters& parameters);
@@ -965,27 +935,6 @@ class Solver {
   // Abandon the current branch in the search tree. A backtrack will follow.
   void Fail();
 
-  // Exports the model to protobuf. This code will be called
-  // from inside the solver during the start of the search.
-  CpModel ExportModel() const;
-  // Exports the model to protobuf. Search monitors are useful to pass
-  // the objective and limits to the protobuf.
-  CpModel ExportModelWithSearchMonitors(
-      const std::vector<SearchMonitor*>& monitors) const;
-  // Exports the model to protobuf. Search monitors are useful to pass
-  // the objective and limits to the protobuf.
-  CpModel ExportModelWithSearchMonitorsAndDecisionBuilder(
-      const std::vector<SearchMonitor*>& monitors,
-      DecisionBuilder* const db) const;
-  // Loads the model into the solver, and returns true upon success.
-  bool LoadModel(const CpModel& model_proto);
-  // Loads the model into the solver, appends search monitors to monitors,
-  // and returns true upon success.
-  bool LoadModelWithSearchMonitors(const CpModel& model_proto,
-                                   std::vector<SearchMonitor*>* monitors);
-  // Upgrades the model to the latest version.
-  static bool UpgradeModel(CpModel* const proto);
-
 #if !defined(SWIG)
   // Collects decision variables.
   // All decision variables will be collected in 4 groups:
@@ -1006,14 +955,6 @@ class Solver {
       std::vector<IntVar*>* const secondary_integer_variables,
       std::vector<SequenceVar*>* const sequence_variables,
       std::vector<IntervalVar*>* const interval_variables);
-
-  ConstraintBuilder GetConstraintBuilder(const std::string& tag) const;
-  IntegerExpressionBuilder GetIntegerExpressionBuilder(
-      const std::string& tag) const;
-  IntervalVariableBuilder GetIntervalVariableBuilder(
-      const std::string& tag) const;
-  SequenceVariableBuilder GetSequenceVariableBuilder(
-      const std::string& tag) const;
 #endif  // SWIG
 
 #if !defined(SWIG)
@@ -2313,14 +2254,6 @@ class Solver {
   // this happens at a leaf the corresponding solution will be rejected.
   SearchLimit* MakeCustomLimit(std::function<bool()> limiter);
 
-  // ----- No Goods -----
-
-  // Creates a non-reversible nogood manager to store and use nogoods
-  // during search. Nogoods are defined by the NoGood class. It can be
-  // used during search with restart to avoid revisiting the same
-  // portion of the search tree.
-  NoGoodManager* MakeNoGoodManager();
-
   // ----- Tree Monitor -----
   // Creates a tree monitor that outputs a detailed overview of the
   // decision phase in cpviz format. The XML data is written to files
@@ -2924,11 +2857,6 @@ class Solver {
 
   // Accepts the given model visitor.
   void Accept(ModelVisitor* const visitor) const;
-  void Accept(ModelVisitor* const visitor,
-              const std::vector<SearchMonitor*>& monitors) const;
-  void Accept(ModelVisitor* const visitor,
-              const std::vector<SearchMonitor*>& monitors,
-              DecisionBuilder* const db) const;
 
   Decision* balancing_decision() const { return balancing_decision_.get(); }
 
@@ -3097,17 +3025,6 @@ class Solver {
 
   void InitCachedIntConstants();
   void InitCachedConstraint();
-  void InitBuilders();
-  // Registers a constraint builder.
-  void RegisterBuilder(const std::string& tag, ConstraintBuilder builder);
-  // Registers an integer expression builder.
-  void RegisterBuilder(const std::string& tag,
-                       IntegerExpressionBuilder builder);
-  // Registers an interval variable builder.
-  void RegisterBuilder(const std::string& tag, IntervalVariableBuilder builder);
-  // Registers a sequence variable builder.
-  void RegisterBuilder(const std::string& tag, SequenceVariableBuilder builder);
-  void DeleteBuilders();
 
   // Returns the Search object that is at the bottom of the search stack.
   // Contrast with ActiveSearch(), which returns the search at the
@@ -3179,13 +3096,6 @@ class Solver {
   int constraint_index_;
   int additional_constraint_index_;
   int num_int_vars_;
-
-  // Support for model loading.
-  std::unordered_map<std::string, IntegerExpressionBuilder>
-      expression_builders_;
-  std::unordered_map<std::string, ConstraintBuilder> constraint_builders_;
-  std::unordered_map<std::string, IntervalVariableBuilder> interval_builders_;
-  std::unordered_map<std::string, SequenceVariableBuilder> sequence_builders_;
 
   std::unique_ptr<ModelCache> model_cache_;
   std::unique_ptr<PropagationMonitor> propagation_monitor_;
@@ -4335,77 +4245,6 @@ class SearchLimit : public SearchMonitor {
 
   bool crossed_;
   DISALLOW_COPY_AND_ASSIGN(SearchLimit);
-};
-
-// ---------- NoGood Recorder ------
-
-// Nogoods are used to store negative information collected during
-// search. They are by definition non reversible.
-
-// ----- No Good ----
-
-// A nogood is a conjunction of unary constraints that represents a
-// state that must not be visited during search.  For instance, if X
-// and Y are variables, (X == 5) && (Y != 3) is a nogood that forbids
-// all part of the search tree where X is 5 and Y is not 3.
-class NoGood {
- public:
-  ~NoGood();
-  // Creates a term var == value.
-  void AddIntegerVariableEqualValueTerm(IntVar* const var, int64 value);
-  // Creates a term var != value.
-  void AddIntegerVariableNotEqualValueTerm(IntVar* const var, int64 value);
-  // Applies the nogood. That is if there is only one undecided term and
-  // all remaining terms are always true, then the opposite of this
-  // term is added to the solver. It returns true if the nogood is
-  // still active and needs to be reevaluated.
-  bool Apply(Solver* const solver);
-  // Pretty print.
-  std::string DebugString() const;
-  // TODO(user) : support interval variables and more types of constraints.
-
- private:
-  std::vector<NoGoodTerm*> terms_;
-};
-
-// ----- Base class of no good manager -----
-
-// A nogood recorder is used to store a set of nogoods in an
-// irreversible way during search. It will actively propagate nogoods,
-// that is if all its terms minus one are always true, then it will
-// apply the reverse of this term during the search.
-class NoGoodManager : public SearchMonitor {
- public:
-  explicit NoGoodManager(Solver* const s) : SearchMonitor(s) {}
-  ~NoGoodManager() override {}
-
-  // ----- User API -----
-
-  // Clear all stored nogoods.
-  virtual void Clear() = 0;
-  // NoGood factory. Create an empty nogood.
-  NoGood* MakeNoGood();
-  // Add one nogood to the recorder. Ownership is transferred to the recorder.
-  virtual void AddNoGood(NoGood* const nogood) = 0;
-  // Returns the number of nogoods added to the recorder.
-  virtual int NoGoodCount() const = 0;
-  // Pretty Print.
-  std::string DebugString() const override = 0;
-
-  // Internal methods that link search events to the recorder API.
-  void EnterSearch() override;
-  void BeginNextDecision(DecisionBuilder* const db) override;
-  bool AcceptSolution() override;
-
- private:
-  // ----- Implementor API -----
-
-  // Initialize data structures.
-  virtual void Init() = 0;
-  // Applies the nogood.
-  virtual void Apply() = 0;
-
-  DISALLOW_COPY_AND_ASSIGN(NoGoodManager);
 };
 
 // ---------- Interval Var ----------

@@ -88,9 +88,6 @@ message ConstraintSolverParameters {
   // Print added constraints.
   bool print_added_constraints = 13;
 
-  // Export model to file.
-  string export_file = 14;
-
   //
   // Control search.
   //

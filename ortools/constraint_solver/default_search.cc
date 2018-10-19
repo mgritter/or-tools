@@ -37,16 +37,12 @@ DEFINE_int32(cp_impact_divider, 10, "Divider for continuous update.");
 
 namespace operations_research {
 
-class NoGoodManager;
-
 namespace {
 // Default constants for search phase parameters.
 const int kDefaultNumberOfSplits = 100;
 const int kDefaultHeuristicPeriod = 100;
 const int kDefaultHeuristicNumFailuresLimit = 30;
 const int kDefaultSeed = 0;
-const double kDefaultRestartLogSize = -1.0;
-const bool kDefaultUseNoGoods = true;
 const bool kDefaultUseLastConflict = true;
 }  // namespace
 
@@ -59,9 +55,7 @@ DefaultPhaseParameters::DefaultPhaseParameters()
       heuristic_num_failures_limit(kDefaultHeuristicNumFailuresLimit),
       persistent_impact(true),
       random_seed(kDefaultSeed),
-      restart_log_size(kDefaultRestartLogSize),
       display_level(DefaultPhaseParameters::NORMAL),
-      use_no_goods(kDefaultUseNoGoods),
       use_last_conflict(kDefaultUseLastConflict),
       decision_builder(nullptr) {}
 
@@ -660,15 +654,6 @@ const double ImpactRecorder::kFailureImpact = 1.0;
 const double ImpactRecorder::kInitFailureImpact = 2.0;
 const int ImpactRecorder::kUninitializedVarIndex = -1;
 
-// ----- Restart -----
-
-int64 ComputeBranchRestart(int64 log) {
-  if (log <= 0 || log > 63) {
-    return kint64max;
-  }
-  return GG_ULONGLONG(1) << log;
-}
-
 // This structure stores 'var[index] (left?==:!=) value'.
 class ChoiceInfo {
  public:
@@ -694,256 +679,6 @@ class ChoiceInfo {
   int64 value_;
   IntVar* var_;
   bool left_;
-};
-
-// Hook on the search to check restart before the refutation of a decision.
-class RestartMonitor : public SearchMonitor {
- public:
-  RestartMonitor(Solver* const solver, DefaultPhaseParameters parameters,
-                 DomainWatcher* const domain_watcher)
-      : SearchMonitor(solver),
-        parameters_(parameters),
-        domain_watcher_(domain_watcher),
-        min_log_search_space_(std::numeric_limits<double>::infinity()),
-        no_good_manager_(parameters_.restart_log_size >= 0 &&
-                                 parameters_.use_no_goods
-                             ? solver->MakeNoGoodManager()
-                             : nullptr),
-        branches_between_restarts_(0),
-        min_restart_period_(ComputeBranchRestart(parameters_.restart_log_size)),
-        maximum_restart_depth_(kint64max),
-        num_restarts_(0) {}
-
-  ~RestartMonitor() override {}
-
-  void ApplyDecision(Decision* const d) override {
-    Solver* const s = solver();
-    branches_between_restarts_++;
-    d->Accept(&find_var_);
-    if (find_var_.operation() == FindVar::ASSIGN) {
-      choices_.Push(solver(),
-                    ChoiceInfo(find_var_.var(), find_var_.value(), true));
-      if (parameters_.display_level == DefaultPhaseParameters::VERBOSE) {
-        VLOG(2) << "adding no good = " << choices_.Last()->DebugString()
-                << " at depth " << s->SearchDepth();
-      }
-    }
-  }
-
-  void RefuteDecision(Decision* const d) override {
-    CHECK(d != nullptr);
-    Solver* const s = solver();
-    branches_between_restarts_++;
-    d->Accept(&find_var_);
-    if (find_var_.operation() == FindVar::ASSIGN) {
-      choices_.Push(solver(),
-                    ChoiceInfo(find_var_.var(), find_var_.value(), false));
-      if (parameters_.display_level == DefaultPhaseParameters::VERBOSE) {
-        VLOG(2) << "adding no good = " << choices_.Last()->DebugString()
-                << " at depth " << s->SearchDepth();
-      }
-      if (ChecksRestartOnRefute(s)) {
-        if (AddsNoGood(s)) {
-          if (parameters_.display_level == DefaultPhaseParameters::VERBOSE) {
-            VLOG(2) << "restarting";
-          }
-          num_restarts_++;
-          s->RestartCurrentSearch();
-          s->Fail();
-        }
-      }
-    }
-  }
-
-  void ExitSearch() override {
-    if (parameters_.display_level != DefaultPhaseParameters::NONE &&
-        no_good_manager_ != nullptr) {
-      LOG(INFO) << "Default search has generated "
-                << no_good_manager_->NoGoodCount() << " no goods, and "
-                << num_restarts_ << " restarts";
-    }
-  }
-
-  bool AtSolution() override {
-    if (parameters_.display_level == DefaultPhaseParameters::VERBOSE) {
-      VLOG(2) << "Found a solution after the following decisions:";
-      for (SimpleRevFIFO<ChoiceInfo>::Iterator it(&choices_); it.ok(); ++it) {
-        VLOG(2) << "  " << (*it).DebugString();
-      }
-    }
-    return false;
-  }
-
-  void BeginFail() override {
-    if (parameters_.display_level == DefaultPhaseParameters::VERBOSE) {
-      VLOG(2) << "-- Failure";
-    }
-  }
-
-  void Install() override {
-    SearchMonitor::Install();
-    if (no_good_manager_ != nullptr) {
-      no_good_manager_->Install();
-    }
-  }
-
-  int num_restarts() const { return num_restarts_; }
-
-  std::string DebugString() const override { return "RestartMonitor"; }
-
- private:
-  // Called before applying the refutation of the decision.  This
-  // method must decide if we need to restart or not.  The main
-  // decision is based on the restart_log_size and the current search
-  // space size. If, the current search space size is greater than the
-  // min search space size encountered since the last restart +
-  // restart_log_size, this means that we have just finished a search
-  // tree of size at least restart_log_size.  If the search tree is
-  // very sparse, then we may have visited close to restart_log_size
-  // nodes since the last restart (instead of the maximum of
-  // 2^restart_log_size). To fight this degenerate case, we also count
-  // the number of branches explored since the last restart and decide
-  // to postpone restart until we finish a sub-search tree and have
-  // visited enough branches (2^restart_log_size). To enforce this,
-  // when we postpone a restart, we store the current search depth -1
-  // in maximum_restart_depth_ and will restart as soon as we reach a
-  // node above the current one, with enough visited branches.
-  bool ChecksRestartOnRefute(Solver* const solver) {
-    // We do nothing if restart_log_size is < 0.
-    if (parameters_.restart_log_size >= 0) {
-      const int search_depth = solver->SearchDepth();
-      const double log_search_space_size =
-          domain_watcher_->LogSearchSpaceSize();
-      if (min_log_search_space_ > log_search_space_size) {
-        min_log_search_space_ = log_search_space_size;
-      }
-
-      // Some verbose display.
-      if (parameters_.display_level == DefaultPhaseParameters::VERBOSE) {
-        VLOG(2) << "search_depth = " << search_depth
-                << ", branches between restarts = "
-                << branches_between_restarts_
-                << ", log_search_space_size = " << log_search_space_size
-                << ", min_log_search_space = " << min_log_search_space_;
-      }
-      bool all_rights = true;
-      for (SimpleRevFIFO<ChoiceInfo>::Iterator it(&choices_); it.ok(); ++it) {
-        if ((*it).left()) {
-          all_rights = false;
-          break;
-        }
-      }
-      if (all_rights) {
-        if (parameters_.display_level == DefaultPhaseParameters::VERBOSE) {
-          VLOG(2) << "  - finished a left subtree, forcing a nogood";
-        }
-        return true;
-      }
-      if (search_depth > maximum_restart_depth_ || search_depth == 0) {
-        // We are deeper than maximum_restart_depth_, we should not restart
-        // because we have not finished a sub-tree of sufficient size.
-        return false;
-      }
-      // We may restart either because of the search space criteria,
-      // or the search depth is less than maximum_restart_depth_.
-      if (min_log_search_space_ + parameters_.restart_log_size <
-              log_search_space_size ||
-          (search_depth <= maximum_restart_depth_ &&
-           maximum_restart_depth_ != kint64max)) {
-        // If we have not visited enough branches, we postpone the
-        // restart and force to check at least at the parent of the
-        // current search node.
-        if (branches_between_restarts_ < min_restart_period_) {
-          maximum_restart_depth_ = search_depth - 1;
-          if (parameters_.display_level == DefaultPhaseParameters::VERBOSE) {
-            VLOG(2) << "Postpone restarting until depth <= "
-                    << maximum_restart_depth_
-                    << ", visited nodes = " << branches_between_restarts_
-                    << " / " << min_restart_period_;
-          }
-          return false;
-        }
-        return true;
-      }
-    }
-    return false;
-  }
-
-  // Performs the restart. It resets various counters and adds a
-  // non-reversible nogood if need be. It returns true if we should
-  // restart after having added the nogood.
-  bool AddsNoGood(Solver* const solver) {
-    min_log_search_space_ = std::numeric_limits<double>::infinity();
-    branches_between_restarts_ = 0;
-    maximum_restart_depth_ = kint64max;
-    // Creates nogood.
-    if (parameters_.use_no_goods) {
-      bool all_rights = true;
-      for (SimpleRevFIFO<ChoiceInfo>::Iterator it(&choices_); it.ok(); ++it) {
-        const ChoiceInfo& choice = *it;
-        if (choice.left()) {
-          all_rights = false;
-        }
-      }
-      DCHECK(no_good_manager_ != nullptr);
-
-      // Reverse the last no good if need be. If we have finished the
-      // apply branch, then the subtree below the left branch is
-      // completely explored. The choice list contains the refute
-      // branch. This one should be reverted.
-      //
-      // It can also happen that we are failing in the apply
-      // branch. In that case, we do not need to revert it.
-      DCHECK(!choices_.Last()->left());
-      const bool last_left = choices_.Last()->left();
-      choices_.MutableLast()->set_left(true);
-      NoGood* const nogood = no_good_manager_->MakeNoGood();
-
-      // if the nogood contains both x == 3 and x != 4, we can simplify
-      // to keep only x == 3.
-      std::unordered_set<const IntVar*> positive_variable;
-      for (SimpleRevFIFO<ChoiceInfo>::Iterator it(&choices_); it.ok(); ++it) {
-        const ChoiceInfo& choice = *it;
-        if (choice.left()) {
-          positive_variable.insert(choice.var());
-        }
-      }
-      // We fill the nogood structure.
-      for (SimpleRevFIFO<ChoiceInfo>::Iterator it(&choices_); it.ok(); ++it) {
-        const ChoiceInfo& choice = *it;
-        IntVar* const var = choice.var();
-        const int64 value = choice.value();
-        if (choice.left()) {
-          nogood->AddIntegerVariableEqualValueTerm(var, value);
-        } else if (!gtl::ContainsKey(positive_variable, choice.var())) {
-          nogood->AddIntegerVariableNotEqualValueTerm(var, value);
-        }
-      }
-      if (parameters_.display_level == DefaultPhaseParameters::VERBOSE) {
-        VLOG(2) << "Adding no good no " << no_good_manager_->NoGoodCount()
-                << ": " << nogood->DebugString();
-      }
-      // Adds the nogood to the nogood manager.
-      no_good_manager_->AddNoGood(nogood);
-      // Revert the modification on the last.
-      choices_.MutableLast()->set_left(last_left);
-      // If the nogood is only right branches, there is no need to
-      // restart as we would end up in the same place.
-      return !all_rights;
-    }
-    return true;
-  }
-
-  const DefaultPhaseParameters parameters_;
-  DomainWatcher* const domain_watcher_;
-  double min_log_search_space_;
-  NoGoodManager* no_good_manager_;
-  int64 branches_between_restarts_;
-  const int64 min_restart_period_;
-  int64 maximum_restart_depth_;
-  SimpleRevFIFO<ChoiceInfo> choices_;
-  FindVar find_var_;
-  int num_restarts_;
 };
 
 // ---------- Heuristics ----------
@@ -1107,7 +842,6 @@ class DefaultIntegerSearch : public DecisionBuilder {
                     parameters_.run_all_heuristics, parameters_.random_seed,
                     parameters_.heuristic_period,
                     parameters_.heuristic_num_failures_limit),
-        restart_monitor_(solver, parameters_, &domain_watcher_),
         find_var_(),
         last_int_var_(nullptr),
         last_int_value_(0),
@@ -1217,9 +951,6 @@ class DefaultIntegerSearch : public DecisionBuilder {
     if (parameters_.decision_builder == nullptr) {
       extras->push_back(&impact_recorder_);
     }
-    if (parameters_.restart_log_size >= 0) {
-      extras->push_back(&restart_monitor_);
-    }
   }
 
   void Accept(ModelVisitor* const visitor) const override {
@@ -1244,15 +975,8 @@ class DefaultIntegerSearch : public DecisionBuilder {
   }
 
   std::string StatString() const {
-    const int restarts = restart_monitor_.num_restarts();
     const int runs = heuristics_.heuristic_runs();
     std::string result;
-    if (restarts == 1) {
-      result.append("1 restart");
-    } else if (restarts > 1) {
-      absl::StrAppendFormat(&result, "%d restarts", restarts);
-    }
-
     if (runs > 0) {
       if (!result.empty()) {
         result.append(", ");
@@ -1318,8 +1042,8 @@ class DefaultIntegerSearch : public DecisionBuilder {
                   << " variables, initialization splits = "
                   << parameters_.initialization_splits
                   << ", heuristic_period = " << parameters_.heuristic_period
-                  << ", run_all_heuristics = " << parameters_.run_all_heuristics
-                  << ", restart_log_size = " << parameters_.restart_log_size;
+                  << ", run_all_heuristics = "
+                  << parameters_.run_all_heuristics;
       }
       // Init the impacts.
       impact_recorder_.FirstRun(parameters_.initialization_splits);
@@ -1367,7 +1091,6 @@ class DefaultIntegerSearch : public DecisionBuilder {
   DomainWatcher domain_watcher_;
   ImpactRecorder impact_recorder_;
   RunHeuristicsAsDives heuristics_;
-  RestartMonitor restart_monitor_;
   FindVar find_var_;
   IntVar* last_int_var_;
   int64 last_int_value_;

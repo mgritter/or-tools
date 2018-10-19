@@ -69,7 +69,6 @@
 #include "ortools/base/sysinfo.h"
 #include "ortools/base/timer.h"
 #include "ortools/constraint_solver/constraint_solver.h"
-#include "ortools/constraint_solver/model.pb.h"
 #include "ortools/util/bitset.h"
 #include "ortools/util/tuple_set.h"
 #include "ortools/util/vector_map.h"
@@ -2161,88 +2160,6 @@ class ModelParser : public ModelVisitor {
   std::vector<ArgumentHolder*> holders_;
 };
 
-// ---------- CpModelLoader -----------
-
-// The class CpModelLoader is responsible for reading a protocol
-// buffer representing a CP model and creating the corresponding CP
-// model with the expressions and constraints. It should not be used directly.
-class CpModelLoader {
- public:
-  explicit CpModelLoader(Solver* const solver) : solver_(solver) {}
-  ~CpModelLoader() {}
-
-  Solver* solver() const { return solver_; }
-
-  // Builds integer expression from proto and stores it. It returns
-  // true upon success.
-  bool BuildFromProto(const CpIntegerExpression& proto);
-  // Builds constraint from proto and returns it.
-  Constraint* BuildFromProto(const CpConstraint& proto);
-  // Builds interval variable from proto and stores it. It returns
-  // true upon success.
-  bool BuildFromProto(const CpIntervalVariable& proto);
-  // Builds sequence variable from proto and stores it. It returns
-  // true upon success.
-  bool BuildFromProto(const CpSequenceVariable& proto);
-
-  // Returns stored integer expression.
-  IntExpr* IntegerExpression(int index) const;
-  // Returns stored interval variable.
-  IntervalVar* IntervalVariable(int index) const;
-
-  bool ScanOneArgument(int type_index, const CpArgument& arg_proto,
-                       int64* to_fill);
-
-  bool ScanOneArgument(int type_index, const CpArgument& arg_proto,
-                       IntExpr** to_fill);
-
-  bool ScanOneArgument(int type_index, const CpArgument& arg_proto,
-                       std::vector<int64>* to_fill);
-
-  bool ScanOneArgument(int type_index, const CpArgument& arg_proto,
-                       IntTupleSet* to_fill);
-
-  bool ScanOneArgument(int type_index, const CpArgument& arg_proto,
-                       std::vector<IntVar*>* to_fill);
-
-  bool ScanOneArgument(int type_index, const CpArgument& arg_proto,
-                       IntervalVar** to_fill);
-
-  bool ScanOneArgument(int type_index, const CpArgument& arg_proto,
-                       std::vector<IntervalVar*>* to_fill);
-
-  bool ScanOneArgument(int type_index, const CpArgument& arg_proto,
-                       SequenceVar** to_fill);
-
-  bool ScanOneArgument(int type_index, const CpArgument& arg_proto,
-                       std::vector<SequenceVar*>* to_fill);
-
-  template <class P, class A>
-  bool ScanArguments(const std::string& type, const P& proto, A* to_fill) {
-    const int index = tags_.Index(type);
-    for (int i = 0; i < proto.arguments_size(); ++i) {
-      if (ScanOneArgument(index, proto.arguments(i), to_fill)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  int TagIndex(const std::string& tag) const { return tags_.Index(tag); }
-
-  void AddTag(const std::string& tag) { tags_.Add(tag); }
-
-  // TODO(user): Use.
-  void SetSequenceVariable(int index, SequenceVar* const var) {}
-
- private:
-  Solver* const solver_;
-  std::vector<IntExpr*> expressions_;
-  std::vector<IntervalVar*> intervals_;
-  std::vector<SequenceVar*> sequences_;
-  VectorMap<std::string> tags_;
-};
-
 // ----- Utility Class for Callbacks -----
 
 template <class T>
@@ -2276,26 +2193,6 @@ class ArrayWithOffset : public BaseObject {
   const int64 index_max_;
   std::unique_ptr<T[]> values_;
 };
-
-template <class T>
-std::function<T(int64)> MakeFunctionFromProto(CpModelLoader* const builder,
-                                              const CpExtension& proto,
-                                              int tag_index) {
-  DCHECK_EQ(tag_index, proto.type_index());
-  Solver* const solver = builder->solver();
-  int64 index_min = 0;
-  CHECK(builder->ScanArguments(ModelVisitor::kMinArgument, proto, &index_min));
-  int64 index_max = 0;
-  CHECK(builder->ScanArguments(ModelVisitor::kMaxArgument, proto, &index_max));
-  std::vector<int64> values;
-  CHECK(builder->ScanArguments(ModelVisitor::kValuesArgument, proto, &values));
-  ArrayWithOffset<T>* const array =
-      solver->RevAlloc(new ArrayWithOffset<T>(index_min, index_max));
-  for (int i = index_min; i <= index_max; ++i) {
-    array->SetValue(i, values[i - index_min]);
-  }
-  return [array](int64 index) { return array->Evaluate(index); };
-}
 #endif  // SWIG
 
 // This class is a reversible growing array. In can grow in both

@@ -35,7 +35,6 @@
 #include "ortools/base/recordio.h"
 #include "ortools/base/stl_util.h"
 #include "ortools/constraint_solver/constraint_solveri.h"
-#include "ortools/constraint_solver/model.pb.h"
 #include "ortools/util/tuple_set.h"
 #include "zlib.h"
 
@@ -50,7 +49,6 @@ DEFINE_bool(cp_print_model, false,
             "use PrintModelVisitor on model before solving.");
 DEFINE_bool(cp_model_stats, false,
             "use StatisticsModelVisitor on model before solving.");
-DEFINE_string(cp_export_file, "", "Export model to file using CpModel.");
 DEFINE_bool(cp_disable_solve, false,
             "Force failure at the beginning of a search.");
 DEFINE_string(cp_profile_file, "", "Export profiling overview to file.");
@@ -123,7 +121,6 @@ ConstraintSolverParameters Solver::DefaultSolverParameters() {
   params.set_print_local_search_profile(FLAGS_cp_print_local_search_profile);
   params.set_print_model(FLAGS_cp_print_model);
   params.set_print_model_stats(FLAGS_cp_model_stats);
-  params.set_export_file(FLAGS_cp_export_file);
   params.set_disable_solve(FLAGS_cp_disable_solve);
   params.set_name_cast_variables(FLAGS_cp_name_cast_variables);
   params.set_print_added_constraints(FLAGS_cp_print_added_constraints);
@@ -1418,7 +1415,6 @@ void Solver::Init() {
   PushSentinel(SOLVER_CTOR_SENTINEL);
   InitCachedIntConstants();  // to be called after the SENTINEL is set.
   InitCachedConstraint();    // Cache the true constraint.
-  InitBuilders();
   timer_->Restart();
   model_cache_.reset(BuildModelCache(this));
   AddPropagationMonitor(reinterpret_cast<PropagationMonitor*>(demon_profiler_));
@@ -1440,7 +1436,6 @@ Solver::~Solver() {
   gtl::STLDeleteElements(&searches_);
   DeleteDemonProfiler(demon_profiler_);
   DeleteLocalSearchProfiler(local_search_profiler_);
-  DeleteBuilders();
 }
 
 std::string Solver::DebugString() const {
@@ -1625,28 +1620,8 @@ void Solver::AddCastConstraint(CastConstraint* const constraint,
 }
 
 void Solver::Accept(ModelVisitor* const visitor) const {
-  std::vector<SearchMonitor*> monitors;
-  Accept(visitor, monitors, nullptr);
-}
-
-void Solver::Accept(ModelVisitor* const visitor,
-                    const std::vector<SearchMonitor*>& monitors) const {
-  Accept(visitor, monitors, nullptr);
-}
-
-void Solver::Accept(ModelVisitor* const visitor,
-                    const std::vector<SearchMonitor*>& monitors,
-                    DecisionBuilder* const db) const {
   visitor->BeginVisitModel(name_);
   ForAll(constraints_list_, &Constraint::Accept, visitor);
-  if (state_ == IN_ROOT_NODE) {
-    TopLevelSearch()->Accept(visitor);
-  } else {
-    ForAll(monitors, &SearchMonitor::Accept, visitor);
-  }
-  if (db != nullptr) {
-    db->Accept(visitor);
-  }
   visitor->EndVisitModel(name_);
 }
 
@@ -1660,19 +1635,6 @@ void Solver::ProcessConstraints() {
   if (parameters_.print_model_stats()) {
     ModelVisitor* const visitor = MakeStatisticsModelVisitor();
     Accept(visitor);
-  }
-  const std::string export_file = parameters_.export_file();
-  if (!export_file.empty()) {
-    File* file;
-    if (!file::Open(export_file, "wb", &file, file::Defaults()).ok()) {
-      LOG(WARNING) << "Cannot open " << export_file;
-    } else {
-      CpModel export_proto = ExportModel();
-      VLOG(1) << export_proto.DebugString();
-      recordio::RecordWriter writer(file);
-      writer.WriteProtocolMessage(export_proto);
-      writer.Close();
-    }
   }
 
   if (parameters_.disable_solve()) {

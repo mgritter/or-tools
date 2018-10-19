@@ -106,14 +106,6 @@ $(GEN_DIR)/ortools/constraint_solver/SolverParameters.pb.cs: \
  --csharp_opt=file_extension=.pb.cs \
  $(SRC_DIR)$Sortools$Sconstraint_solver$Ssolver_parameters.proto
 
-$(GEN_DIR)/ortools/constraint_solver/Model.pb.cs: \
- $(SRC_DIR)/ortools/constraint_solver/solver_parameters.proto \
- | $(GEN_DIR)/ortools/constraint_solver
-	$(PROTOC) --proto_path=$(SRC_DIR) \
- --csharp_out=$(GEN_PATH)$Sortools$Sconstraint_solver \
- --csharp_opt=file_extension=.pb.cs \
- $(SRC_DIR)$Sortools$Sconstraint_solver$Smodel.proto
-
 $(GEN_DIR)/ortools/constraint_solver/RoutingParameters.pb.cs: \
  $(SRC_DIR)/ortools/constraint_solver/routing_parameters.proto \
  | $(GEN_DIR)/ortools/constraint_solver
@@ -328,7 +320,6 @@ $(DOTNET_ORTOOLS_NATIVE_NUPKG): \
  $(SRC_DIR)/ortools/sat/csharp/CpModel.cs \
  $(SRC_DIR)/ortools/util/csharp/NestedArrayHelper.cs \
  $(SRC_DIR)/ortools/util/csharp/ProtoHelper.cs \
- $(GEN_DIR)/ortools/constraint_solver/Model.pb.cs \
  $(GEN_DIR)/ortools/constraint_solver/SearchLimit.pb.cs \
  $(GEN_DIR)/ortools/constraint_solver/SolverParameters.pb.cs \
  $(GEN_DIR)/ortools/constraint_solver/RoutingParameters.pb.cs \

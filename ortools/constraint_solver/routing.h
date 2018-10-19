@@ -1039,10 +1039,6 @@ class RoutingModel {
   // Returns true if a vehicle/node matching problem is detected.
   bool IsMatchingModel() const;
 
-  // Internal only: initializes the builders used to build a solver model from
-  // CpModels.
-  static void InitializeBuilders(Solver* solver);
-
 #ifndef SWIG
   // Sets the callback returning the variable to use for the Tabu Search
   // metaheuristic.

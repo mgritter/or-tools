@@ -1002,7 +1002,9 @@ void Assignment::CopyIntersection(const Assignment* assignment) {
   int_var_container_.CopyIntersection(assignment->int_var_container_);
   interval_var_container_.CopyIntersection(assignment->interval_var_container_);
   sequence_var_container_.CopyIntersection(assignment->sequence_var_container_);
-  objective_element_ = assignment->objective_element_;
+  if (objective_element_.Var() == assignment->objective_element_.Var()) {
+    objective_element_ = assignment->objective_element_;
+  }
 }
 
 void Assignment::Copy(const Assignment* assignment) {

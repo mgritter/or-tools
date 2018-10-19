@@ -41,7 +41,6 @@
 #include "ortools/base/protoutil.h"
 #include "ortools/base/stl_util.h"
 #include "ortools/base/thorough_hash.h"
-#include "ortools/constraint_solver/model.pb.h"
 #include "ortools/constraint_solver/routing_enums.pb.h"
 #include "ortools/constraint_solver/routing_neighborhoods.h"
 #include "ortools/constraint_solver/routing_parameters.h"
@@ -396,24 +395,6 @@ class DifferentFromValues : public Constraint {
   const std::vector<int64> values_;
 };
 
-namespace {
-Constraint* BuildDifferentFromValues(CpModelLoader* const builder,
-                                     const CpConstraint& proto) {
-  std::vector<IntVar*> vars;
-  if (!builder->ScanArguments(ModelVisitor::kVarsArgument, proto, &vars) ||
-      vars.size() != 1) {
-    return nullptr;
-  }
-  std::vector<int64> values;
-  if (!builder->ScanArguments(ModelVisitor::kValuesArgument, proto, &values)) {
-    return nullptr;
-  }
-  Solver* const solver = builder->solver();
-  return solver->RevAlloc(new DifferentFromValues(
-      builder->solver(), vars.back(), std::move(values)));
-}
-}  // namespace
-
 // Set of "light" constraints, well-suited for use within Local Search.
 // These constraints are "checking" constraints, only triggered on WhenBound
 // events. The provide very little (or no) domain filtering.
@@ -486,29 +467,6 @@ Constraint* MakeLightElement(Solver* const solver, IntVar* const var,
       solver, var, index, std::move(values), std::move(deep_serialize)));
 }
 
-namespace {
-Constraint* BuildLightElement(CpModelLoader* const builder,
-                              const CpConstraint& proto) {
-  IntExpr* index = nullptr;
-  if (!builder->ScanArguments(ModelVisitor::kIndexArgument, proto, &index)) {
-    return nullptr;
-  }
-  IntExpr* target = nullptr;
-  if (!builder->ScanArguments(ModelVisitor::kTargetArgument, proto, &target)) {
-    return nullptr;
-  }
-  if (proto.extensions_size() != 1) {
-    return nullptr;
-  }
-  const int extension_tag_index =
-      builder->TagIndex(ModelVisitor::kInt64ToInt64Extension);
-  Solver::IndexEvaluator1 callback = MakeFunctionFromProto<int64>(
-      builder, proto.extensions(0), extension_tag_index);
-  return MakeLightElement(builder->solver(), target->Var(), index->Var(),
-                          std::move(callback), []() { return true; });
-}
-}  // namespace
-
 // Light two-dimension function-based element constraint ensuring:
 // var == values(index1, index2).
 // Doesn't perform bound reduction of the resulting variable until the index
@@ -580,45 +538,6 @@ Constraint* MakeLightElement2(Solver* const solver, IntVar* const var,
   return solver->RevAlloc(new LightFunctionElement2Constraint<F>(
       solver, var, index1, index2, std::move(values)));
 }
-
-namespace {
-Constraint* BuildLightElement2(CpModelLoader* const builder,
-                               const CpConstraint& proto) {
-  Solver* const solver = builder->solver();
-  IntExpr* index1 = nullptr;
-  if (!builder->ScanArguments(ModelVisitor::kIndexArgument, proto, &index1)) {
-    return nullptr;
-  }
-  IntExpr* index2 = nullptr;
-  if (!builder->ScanArguments(ModelVisitor::kIndex2Argument, proto, &index2)) {
-    return nullptr;
-  }
-  int64 index1_min = 0;
-  if (!builder->ScanArguments(ModelVisitor::kMinArgument, proto, &index1_min)) {
-    return nullptr;
-  }
-  int64 index1_max = 0;
-  if (!builder->ScanArguments(ModelVisitor::kMaxArgument, proto, &index1_max)) {
-    return nullptr;
-  }
-  const int extension_tag_index =
-      builder->TagIndex(ModelVisitor::kInt64ToInt64Extension);
-  ArrayWithOffset<Solver::IndexEvaluator1>* const array = solver->RevAlloc(
-      new ArrayWithOffset<Solver::IndexEvaluator1>(index1_min, index1_max));
-  for (int i = index1_min; i <= index1_max; ++i) {
-    array->SetValue(
-        i, MakeFunctionFromProto<int64>(
-               builder, proto.extensions(i - index1_min), extension_tag_index));
-  }
-  IntExpr* target = nullptr;
-  if (!builder->ScanArguments(ModelVisitor::kTargetArgument, proto, &target)) {
-    return nullptr;
-  }
-  return MakeLightElement2(
-      builder->solver(), target->Var(), index1->Var(), index2->Var(),
-      [array](int64 i, int64 j) { return array->Evaluate(i)(j); });
-}
-}  // namespace
 
 // Shortcuts to spawn neighborhood operators from ./routing_neighborhoods.h.
 // TODO(user): Consider removing all these trivial wrappers and just inlining
@@ -767,7 +686,6 @@ RoutingModel::RoutingModel(const RoutingIndexManager& index_manager,
       parameters.has_solver_parameters() ? parameters.solver_parameters()
                                          : Solver::DefaultSolverParameters();
   solver_ = absl::make_unique<Solver>("Routing", solver_parameters);
-  InitializeBuilders(solver_.get());
   // TODO(user): Remove when removal of NodeIndex is complete.
   start_end_count_ = index_manager.num_unique_depots();
   Initialize();
@@ -813,15 +731,6 @@ void RoutingModel::Initialize() {
   cost_cache_.clear();
   cost_cache_.resize(size + vehicles_, {kUnassigned, CostClassIndex(-1), 0});
   preassignment_ = solver_->MakeAssignment();
-}
-
-void RoutingModel::InitializeBuilders(Solver* solver) {
-  solver->RegisterBuilder(RoutingModelVisitor::kLightElement,
-                          Solver::ConstraintBuilder(BuildLightElement));
-  solver->RegisterBuilder(RoutingModelVisitor::kLightElement2,
-                          Solver::ConstraintBuilder(BuildLightElement2));
-  solver->RegisterBuilder(RoutingModelVisitor::kRemoveValues,
-                          Solver::ConstraintBuilder(BuildDifferentFromValues));
 }
 
 RoutingModel::~RoutingModel() {
