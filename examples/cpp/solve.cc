@@ -243,4 +243,6 @@ int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, /*remove_flags=*/true);
   CHECK(!FLAGS_input.empty()) << "--input is required";
   operations_research::Run();
+
+  return EXIT_SUCCESS;
 }
