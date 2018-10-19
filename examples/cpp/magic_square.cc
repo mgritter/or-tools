@@ -38,11 +38,7 @@ DEFINE_int32(choose_var_strategy, 0,
              "2 = max individual impact.");
 DEFINE_bool(select_max_impact_value, false,
             "Select the value with max impact instead of min impact.");
-DEFINE_double(restart_log_size, -1.0,
-              "Threshold for automatic restarting the search in default"
-              " phase.");
 DEFINE_bool(verbose_impact, false, "Verbose output of impact search.");
-DEFINE_bool(use_nogoods, false, "Use no goods in automatic restart.");
 
 namespace operations_research {
 
@@ -85,11 +81,9 @@ void MagicSquare(int grid_size) {
   DefaultPhaseParameters parameters;
   parameters.run_all_heuristics = FLAGS_run_all_heuristics;
   parameters.heuristic_period = FLAGS_heuristics_period;
-  parameters.restart_log_size = FLAGS_restart_log_size;
   parameters.display_level = FLAGS_verbose_impact
                                  ? DefaultPhaseParameters::VERBOSE
                                  : DefaultPhaseParameters::NORMAL;
-  parameters.use_no_goods = FLAGS_use_nogoods;
   switch (FLAGS_choose_var_strategy) {
     case 0: {
       parameters.var_selection_schema =
