@@ -106,7 +106,7 @@ foreach(TEST
 		linear_solver_protocol_buffers
 		ls_api
 		magic_square
-		mps_driver
+		#mps_driver
 		#multidim_knapsack
 		#network_routing
 		nqueens

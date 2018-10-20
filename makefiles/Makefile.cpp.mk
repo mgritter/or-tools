@@ -476,7 +476,7 @@ test_cc_examples: cc
 	$(MAKE) rcc_random_tsp
 #	$(MAKE) rcc_pdptw ARGS="--pdp_file examples/data/pdptw/LC1_2_1.txt" # Fails on windows...
 #	$(MAKE) rcc_shift_minimization_sat  # Port to new API.
-	$(MAKE) rcc_solve ARGS="--input examples/data/tests/test.mps"
+	$(MAKE) rcc_solve ARGS="--input examples/data/tests/test2.mps"
 	$(MAKE) rcc_sports_scheduling ARGS="--num_teams=8 --time_limit=10000"
 	$(MAKE) rcc_strawberry_fields_with_column_generation
 	$(MAKE) rcc_weighted_tardiness_sat
