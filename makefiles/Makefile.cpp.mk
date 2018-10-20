@@ -420,7 +420,7 @@ test_cc_tests: cc
 	$(MAKE) rcc_bug_fz1
 	$(MAKE) rcc_cpp11_test
 	$(MAKE) rcc_forbidden_intervals_test
-#	$(MAKE) rcc_issue173 # error: too long
+	$(MAKE) rcc_issue173
 	$(MAKE) rcc_issue57
 	$(MAKE) rcc_min_max_test
 	$(MAKE) rcc_visitor_test
