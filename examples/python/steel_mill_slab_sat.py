@@ -12,8 +12,10 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import argparse
 import time
+
 from ortools.sat.python import cp_model
 from ortools.linear_solver import pywraplp
 

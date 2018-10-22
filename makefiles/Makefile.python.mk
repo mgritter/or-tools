@@ -502,7 +502,7 @@ test_python_examples: python
 	$(MAKE) rpy_assignment_with_constraints
 	$(MAKE) rpy_assignment_with_constraints_sat
 	$(MAKE) rpy_bacp
-	$(MAKE) rpy_balance_group_sat
+	$(MAKE) rpy_balance_group_sat ARGS="--size 6"
 	$(MAKE) rpy_blending
 	$(MAKE) rpy_broken_weights
 	$(MAKE) rpy_bus_schedule
@@ -636,7 +636,7 @@ test_python_examples: python
 	$(MAKE) rpy_slitherlink
 	$(MAKE) rpy_stable_marriage
 	$(MAKE) rpy_steel_lns
-	$(MAKE) rpy_steel_mill_slab_sat
+	$(MAKE) rpy_steel_mill_slab_sat ARGS="--problem 3"
 	$(MAKE) rpy_steel
 	$(MAKE) rpy_stigler
 	$(MAKE) rpy_strimko2
