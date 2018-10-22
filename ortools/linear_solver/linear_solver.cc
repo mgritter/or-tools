@@ -1508,13 +1508,13 @@ bool MPSolverInterface::SetSolverSpecificParametersAsString(
                       extension.c_str());
   bool no_error_so_far = true;
   if (no_error_so_far) {
-    no_error_so_far = FileSetContents(filename, parameters).ok();
+    no_error_so_far = PortableFileSetContents(filename, parameters).ok();
   }
   if (no_error_so_far) {
     no_error_so_far = ReadParameterFile(filename);
     // We need to clean up the file even if ReadParameterFile() returned
     // false. In production we can continue even if the deletion failed.
-    if (!DeleteFile(filename).ok()) {
+    if (!PortableDeleteFile(filename).ok()) {
       LOG(DFATAL) << "Couldn't delete temporary parameters file: " << filename;
     }
   }

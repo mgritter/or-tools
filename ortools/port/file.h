@@ -20,13 +20,13 @@
 namespace operations_research {
 
 // See ortools/base/file.h
-::util::Status FileSetContents(absl::string_view file_name,
+::util::Status PortableFileSetContents(absl::string_view file_name,
                                absl::string_view content);
 
-::util::Status FileGetContents(absl::string_view file_name,
+::util::Status PortableFileGetContents(absl::string_view file_name,
                                std::string* output);
 
-::util::Status DeleteFile(absl::string_view file_name);
+::util::Status PortableDeleteFile(absl::string_view file_name);
 
 // Returns true if successful.  Outputs temp file to filename.
 bool PortableTemporaryFile(const char* directory_prefix,
