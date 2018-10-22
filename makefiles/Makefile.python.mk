@@ -573,7 +573,7 @@ test_python_examples: python
 	$(MAKE) rpy_magic_sequence_distribute
 	$(MAKE) rpy_magic_square_and_cards
 	$(MAKE) rpy_magic_square_mip
-# warning: magic_square take 21s
+	$(MAKE) rpy_magic_square
 	$(MAKE) rpy_magic_square
 	$(MAKE) rpy_map
 	$(MAKE) rpy_marathon2
