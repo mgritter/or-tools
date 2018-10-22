@@ -95,7 +95,7 @@ bool JsspParser::ParseFile(const std::string& filename) {
       }
     }
   }
-  return parser_state_ != ERROR;
+  return parser_state_ != PARSING_ERROR;
 }
 
 void JsspParser::ProcessJsspLine(const std::string& line) {

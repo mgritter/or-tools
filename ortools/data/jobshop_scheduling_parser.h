@@ -45,7 +45,7 @@ class JsspParser {
     JOBS_READ,
     SSD_READ,
     MACHINE_READ,
-    ERROR,
+    PARSING_ERROR,
     DONE
   };
 
