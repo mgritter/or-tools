@@ -25,9 +25,9 @@
 
 // A random problem generator is also included.
 
+#include <map>
+#include <set>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -145,13 +145,8 @@ class NetworkRoutingData {
   int num_nodes_;
   int max_capacity_;
   int fixed_charge_cost_;
-#if defined(_MSC_VER)
-  hash_map<std::pair<int, int>, int, PairIntHasher> all_arcs_;
-  hash_map<std::pair<int, int>, int, PairIntHasher> all_demands_;
-#else
-  std::unordered_map<std::pair<int, int>, int> all_arcs_;
-  std::unordered_map<std::pair<int, int>, int> all_demands_;
-#endif
+  std::map<std::pair<int, int>, int> all_arcs_;
+  std::map<std::pair<int, int>, int> all_demands_;
 };
 
 // ----- Data Generation -----
@@ -229,8 +224,8 @@ class NetworkRoutingDataBuilder {
       AddEdge(i, j);
     }
 
-    std::unordered_set<int> to_complete;
-    std::unordered_set<int> not_full;
+    std::set<int> to_complete;
+    std::set<int> not_full;
     for (int i = 0; i < num_backbones; ++i) {
       if (degrees_[i] < min_backbone_degree) {
         to_complete.insert(i);
@@ -354,7 +349,7 @@ struct Demand {
 
 class NetworkRoutingSolver {
  public:
-  typedef std::unordered_set<int> OnePath;
+  typedef std::set<int> OnePath;
 
   NetworkRoutingSolver() : arcs_data_(3), num_nodes_(-1) {}
 
@@ -612,7 +607,7 @@ class NetworkRoutingSolver {
 
     bool NextFragment() override {
       // First we select a set of arcs to release.
-      std::unordered_set<int> arcs_to_release;
+      std::set<int> arcs_to_release;
       if (arc_wrappers_.size() <= fragment_size_) {
         // There are not enough used arcs, we will release all of them.
         for (int index = 0; index < arc_wrappers_.size(); ++index) {
