@@ -456,7 +456,7 @@ test_cc_examples: cc
 	$(MAKE) rcc_cvrptw_with_resources
 	$(MAKE) rcc_cvrptw_with_stop_times_and_resources
 	$(MAKE) rcc_dimacs_assignment ARGS=examples/data/dimacs/assignment/small.asn
-	$(MAKE) rcc_dobble_ls
+	$(MAKE) rcc_dobble_ls ARGS="--time_limit_in_ms=10000"
 	$(MAKE) rcc_flexible_jobshop ARGS="--data_file examples/data/flexible_jobshop/hurink_data/edata/la01.fjs"
 	$(MAKE) rcc_flow_api
 #	$(MAKE) rcc_frequency_assignment_problem  # Need data file
@@ -471,10 +471,10 @@ test_cc_examples: cc
 	$(MAKE) rcc_magic_square
 	$(MAKE) rcc_mps_driver ARGS="--input examples/data/tests/test.mps"
 	$(MAKE) rcc_multidim_knapsack ARGS="--data_file examples/data/multidim_knapsack/PB1.DAT"
-	$(MAKE) rcc_network_routing ARGS="--clients=8 --backbones=4 --demands=10 --traffic_min=5 --traffic_max=10 --min_client_degree=2 --max_client_degree=5 --min_backbone_degree=3 --max_backbone_degree=5 --max_capacity=20 --fixed_charge_cost=10 --time_limit=5000"
+	$(MAKE) rcc_network_routing ARGS="--clients=8 --backbones=4 --demands=10 --traffic_min=5 --traffic_max=10 --min_client_degree=2 --max_client_degree=4 --min_backbone_degree=3 --max_backbone_degree=4 --max_capacity=20 --fixed_charge_cost=10 --time_limit=5000"
 	$(MAKE) rcc_nqueens
 	$(MAKE) rcc_random_tsp
-#	$(MAKE) rcc_pdptw ARGS="--pdp_file examples/data/pdptw/LC1_2_1.txt" # Fails on windows...
+#	$(MAKE) rcc_pdptw ARGS="--ppd_file examples/data/pdptw/LC1_2_1.txt" # Fails on windows...
 #	$(MAKE) rcc_shift_minimization_sat  # Port to new API.
 	$(MAKE) rcc_solve ARGS="--input examples/data/tests/test2.mps"
 	$(MAKE) rcc_sports_scheduling ARGS="--num_teams=8 --time_limit=10000"
