@@ -101,7 +101,7 @@ class LinearConstraintBuilder {
 
   // Add literal * coeff to the constaint. Returns false and do nothing if the
   // given literal didn't have an integer view.
-  bool AddLiteralTerm(Literal lit, IntegerValue coeff) ABSL_MUST_USE_RESULT {
+  ABSL_MUST_USE_RESULT bool AddLiteralTerm(Literal lit, IntegerValue coeff) {
     if (assignment_.LiteralIsTrue(lit)) {
       if (lb_ > kMinIntegerValue) lb_ -= coeff;
       if (ub_ < kMaxIntegerValue) ub_ -= coeff;

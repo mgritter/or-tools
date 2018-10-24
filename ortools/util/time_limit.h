@@ -22,10 +22,8 @@
 #include <string>
 #include "absl/memory/memory.h"
 #include "absl/time/clock.h"
-#ifndef NDEBUG
-#include <unordered_map>
-#endif
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/time/time.h"
 #include "ortools/base/commandlineflags.h"
 #include "ortools/base/logging.h"
@@ -293,7 +291,7 @@ class TimeLimit {
 
 #ifndef NDEBUG
   // Contains the values of the deterministic time counters.
-  std::unordered_map<std::string, double> deterministic_counters_;
+  absl::flat_hash_map<std::string, double> deterministic_counters_;
 #endif
 
   friend class NestedTimeLimit;

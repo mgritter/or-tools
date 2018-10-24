@@ -15,11 +15,12 @@
 
 #include <cstdio>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
 #include "ortools/base/commandlineflags.h"
-#include "ortools/base/file.h"
 #include "ortools/base/filelineiter.h"
+#include "ortools/base/file.h"
 #include "ortools/base/hash.h"
 #include "ortools/base/integral_types.h"
 #include "ortools/base/logging.h"
@@ -90,7 +91,7 @@ class AcpData {
 
   void ProcessNewLine(const std::string& line) {
     const std::vector<std::string> words =
-        absl::StrSplit(line, " ", absl::SkipEmpty());
+        absl::StrSplit(line, ' ', absl::SkipEmpty());
     if (words.empty()) return;
     switch (state_) {
       case 0: {
@@ -208,7 +209,7 @@ class RandomIntervalLns : public BaseLns {
         break;
       }
       case 3: {
-        std::unordered_set<int> to_release;
+        absl::flat_hash_set<int> to_release;
         while (to_release.size() < num_product_) {
           to_release.insert(rand_.Uniform(item_to_product_.back() + 1));
         }
@@ -320,7 +321,7 @@ class NRandomSwaps : public IntVarLocalSearchOperator {
   // Make a neighbor assigning one variable to its target value.
   virtual bool MakeOneNeighbor() {
     const int num_swaps = rand_.Uniform(num_swaps_ - 1) + 2;
-    std::unordered_set<int> inserted;
+    absl::flat_hash_set<int> inserted;
     for (int i = 0; i < num_swaps; ++i) {
       int index1 = rand_.Uniform(Size());
       while (gtl::ContainsKey(inserted, index1)) {
@@ -603,7 +604,7 @@ void LoadSolution(const std::string& filename, std::vector<int>* vec) {
   std::string line;
   file->ReadToString(&line, 10000);
   const std::vector<std::string> words =
-      absl::StrSplit(line, " ", absl::SkipEmpty());
+      absl::StrSplit(line, ' ', absl::SkipEmpty());
   LOG(INFO) << "Solution file has " << words.size() << " entries";
   vec->clear();
   for (const std::string& word : words) {
@@ -766,7 +767,7 @@ void Solve(const std::string& filename, const std::string& solution_file) {
                                 solver.MakeIsEqualCstVar(products[0], -1)));
 
   // Redundant due date constraints on non variables.
-  std::unordered_set<int> due_date_set(due_dates.begin(), due_dates.end());
+  absl::flat_hash_set<int> due_date_set(due_dates.begin(), due_dates.end());
   for (const int due_date : due_date_set) {
     std::vector<IntVar*> outside;
     int inside_count = 0;
@@ -871,8 +872,8 @@ void Solve(const std::string& filename, const std::string& solution_file) {
   while (solver.NextSolution()) {
     // for (int p = 0; p < data.num_periods(); ++p) {
     //   LOG(INFO) << absl::StrFormat("%d: %d %d - %s", p, items[p]->Value(),
-    //                             products[p]->Value(),
-    //                             states[p]->DebugString().c_str());
+    //                                products[p]->Value(),
+    //                                states[p]->DebugString().c_str());
     // }
 
     // for (int i = 0; i < num_items; ++i) {

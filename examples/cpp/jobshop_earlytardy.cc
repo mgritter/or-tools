@@ -33,9 +33,9 @@
 
 #include <cstdio>
 #include <cstdlib>
-
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_format.h"
 #include "examples/cpp/jobshop_earlytardy.h"
 #include "examples/cpp/jobshop_ls.h"
@@ -90,7 +90,7 @@ class TimePlacement : public DecisionBuilder {
   virtual Decision* Next(Solver* const solver) {
     mp_solver_.Clear();
     std::vector<std::vector<MPVariable*> > all_vars;
-    std::unordered_map<IntervalVar*, MPVariable*> mapping;
+    absl::flat_hash_map<IntervalVar*, MPVariable*> mapping;
     const double infinity = mp_solver_.infinity();
     all_vars.resize(all_sequences_.size());
 

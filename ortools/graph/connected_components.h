@@ -43,10 +43,10 @@
 #include <memory>
 #include <set>
 #include <type_traits>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/hash/hash.h"
 #include "absl/meta/type_traits.h"
 #include "ortools/base/logging.h"
@@ -143,8 +143,8 @@ struct ConnectedComponentsTypeHelper {
   struct SelectContainer<
       U, absl::enable_if_t<std::is_integral<decltype(
              std::declval<const U&>()(std::declval<const T&>()))>::value>> {
-    using Set = std::unordered_set<T, CompareOrHashT>;
-    using Map = std::unordered_map<T, int, CompareOrHashT>;
+    using Set = absl::flat_hash_set<T, CompareOrHashT>;
+    using Map = absl::flat_hash_map<T, int, CompareOrHashT>;
   };
 
   using Set = typename SelectContainer<CompareOrHashT>::Set;

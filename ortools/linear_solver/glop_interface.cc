@@ -14,7 +14,6 @@
 #include <atomic>
 #include <fstream>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "ortools/base/integral_types.h"

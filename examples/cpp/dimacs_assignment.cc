@@ -15,8 +15,8 @@
 #include <cmath>
 #include <cstdlib>
 #include <string>
-#include <unordered_map>
 #include <vector>
+#include "absl/container/flat_hash_map.h"
 
 #include "absl/strings/str_format.h"
 #include "examples/cpp/parse_dimacs_assignment.h"
@@ -89,8 +89,8 @@ CostValue BuildAndSolveHungarianInstance(
       hungarian_cost[tail][head] = cost;
     }
   }
-  std::unordered_map<int, int> result;
-  std::unordered_map<int, int> wish_this_could_be_null;
+  absl::flat_hash_map<int, int> result;
+  absl::flat_hash_map<int, int> wish_this_could_be_null;
   WallTimer timer;
   VLOG(1) << "Beginning Hungarian method.";
   timer.Start();

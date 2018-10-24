@@ -26,10 +26,9 @@
 //   - The objective it to minimize the number of active workers, while
 //     performing all the jobs.
 
+#include <map>
 #include <set>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "absl/strings/str_split.h"

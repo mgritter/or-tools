@@ -1,8 +1,8 @@
 #include <deque>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "ortools/constraint_solver/constraint_solver.h"
 #include "ortools/constraint_solver/constraint_solveri.h"
 #include "ortools/util/string_array.h"
@@ -184,7 +184,7 @@ class GridSinglePath : public Constraint {
 
     const int num_points = num_rows * num_columns;
     int root_node = -1;
-    std::unordered_set<int> possible_points;
+    absl::flat_hash_set<int> possible_points;
     std::vector<std::vector<int>> neighbors(num_points);
     for (int i = 0; i < num_rows; ++i) {
       for (int j = 0; j < num_columns - 1; ++j) {
@@ -222,7 +222,7 @@ class GridSinglePath : public Constraint {
     if (root_node == -1) {
       return;
     }
-    std::unordered_set<int> visited_points;
+    absl::flat_hash_set<int> visited_points;
     std::deque<int> to_process;
     to_process.push_back(root_node);
     while (!to_process.empty()) {
