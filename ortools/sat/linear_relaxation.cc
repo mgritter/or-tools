@@ -20,28 +20,35 @@ namespace operations_research {
 namespace sat {
 
 bool AppendFullEncodingRelaxation(IntegerVariable var, const Model& model,
-                                  std::vector<LinearConstraint>* constraints) {
+                                  LinearRelaxation* relaxation) {
   const auto* encoder = model.Get<IntegerEncoder>();
   if (encoder == nullptr) return false;
   if (!encoder->VariableIsFullyEncoded(var)) return false;
 
-  LinearConstraintBuilder exactly_one_ct(&model, IntegerValue(1),
-                                         IntegerValue(1));
+  LinearConstraintBuilder at_least_one(&model, IntegerValue(1),
+                                       kMaxIntegerValue);
   LinearConstraintBuilder encoding_ct(&model, IntegerValue(0), IntegerValue(0));
   encoding_ct.AddTerm(var, IntegerValue(1));
 
   // Create the constraint if all literal have a view.
+  std::vector<Literal> at_most_one;
   for (const auto value_literal : encoder->FullDomainEncoding(var)) {
     const Literal lit = value_literal.literal;
-    if (!exactly_one_ct.AddLiteralTerm(lit, IntegerValue(1))) return false;
+    at_most_one.push_back(lit);
+    if (!at_least_one.AddLiteralTerm(lit, IntegerValue(1))) return false;
     if (!encoding_ct.AddLiteralTerm(lit, -value_literal.value)) return false;
   }
 
   // TODO(user): also skip if var is fixed and there is just one term. Or more
   // generally, always add all constraints, but do not add the trivial ones to
   // the LP.
-  if (!exactly_one_ct.IsEmpty()) constraints->push_back(exactly_one_ct.Build());
-  if (!encoding_ct.IsEmpty()) constraints->push_back(encoding_ct.Build());
+  if (!at_least_one.IsEmpty()) {
+    relaxation->linear_constraints.push_back(at_least_one.Build());
+  }
+  if (!encoding_ct.IsEmpty()) {
+    relaxation->linear_constraints.push_back(encoding_ct.Build());
+  }
+  relaxation->at_most_ones.push_back(at_most_one);
   return true;
 }
 
@@ -86,9 +93,8 @@ std::pair<IntegerValue, IntegerValue> GetMinAndMaxNotEncoded(
 
 }  // namespace
 
-void AppendPartialEncodingRelaxation(
-    IntegerVariable var, const Model& model,
-    std::vector<LinearConstraint>* constraints) {
+void AppendPartialEncodingRelaxation(IntegerVariable var, const Model& model,
+                                     LinearRelaxation* relaxation) {
   const auto* encoder = model.Get<IntegerEncoder>();
   const auto* integer_trail = model.Get<IntegerTrail>();
   if (encoder == nullptr || integer_trail == nullptr) return;
@@ -97,14 +103,19 @@ void AppendPartialEncodingRelaxation(
       encoder->PartialDomainEncoding(var);
   if (encoding.empty()) return;
 
-  LinearConstraintBuilder at_most_one_ct(&model, kMinIntegerValue,
-                                         IntegerValue(1));
+  std::vector<Literal> at_most_one_ct;
   absl::flat_hash_set<IntegerValue> encoded_values;
   for (const auto value_literal : encoding) {
+    const Literal literal = value_literal.literal;
+
     // Note that we skip pairs that do not have an Integer view.
-    if (at_most_one_ct.AddLiteralTerm(value_literal.literal, IntegerValue(1))) {
-      encoded_values.insert(value_literal.value);
+    if (encoder->GetLiteralView(literal) == kNoIntegerVariable &&
+        encoder->GetLiteralView(literal.Negated()) == kNoIntegerVariable) {
+      continue;
     }
+
+    at_most_one_ct.push_back(literal);
+    encoded_values.insert(value_literal.value);
   }
   if (encoded_values.empty()) return;
 
@@ -129,10 +140,10 @@ void AppendPartialEncodingRelaxation(
           encoding_ct.AddLiteralTerm(lit, IntegerValue(-value_literal.value)));
     }
     if (exactly_one_ct.size() > 1) {
-      constraints->push_back(exactly_one_ct.Build());
+      relaxation->linear_constraints.push_back(exactly_one_ct.Build());
     }
     if (encoding_ct.size() > 1) {
-      constraints->push_back(encoding_ct.Build());
+      relaxation->linear_constraints.push_back(encoding_ct.Build());
     }
     return;
   }
@@ -156,15 +167,19 @@ void AppendPartialEncodingRelaxation(
   }
 
   if (at_most_one_ct.size() > 1 && encoded_values.size() > 1) {
-    constraints->push_back(at_most_one_ct.Build());
+    relaxation->at_most_ones.push_back(at_most_one_ct);
   }
-  if (lower_bound_ct.size() > 1) constraints->push_back(lower_bound_ct.Build());
-  if (upper_bound_ct.size() > 1) constraints->push_back(upper_bound_ct.Build());
+  if (lower_bound_ct.size() > 1) {
+    relaxation->linear_constraints.push_back(lower_bound_ct.Build());
+  }
+  if (upper_bound_ct.size() > 1) {
+    relaxation->linear_constraints.push_back(upper_bound_ct.Build());
+  }
 }
 
-void AppendPartialGreaterThanEncodingRelaxation(
-    IntegerVariable var, const Model& model,
-    std::vector<LinearConstraint>* constraints) {
+void AppendPartialGreaterThanEncodingRelaxation(IntegerVariable var,
+                                                const Model& model,
+                                                LinearRelaxation* relaxation) {
   const auto* integer_trail = model.Get<IntegerTrail>();
   const auto* encoder = model.Get<IntegerEncoder>();
   if (integer_trail == nullptr || encoder == nullptr) return;
@@ -190,19 +205,16 @@ void AppendPartialGreaterThanEncodingRelaxation(
       // Skip the entry if the literal doesn't have a view.
       if (!lb_constraint.AddLiteralTerm(entry.second, diff)) continue;
       if (prev_literal_index != kNoLiteralIndex) {
-        // Add var <= prev_var.
-        LinearConstraintBuilder lower_than(&model, kMinIntegerValue,
-                                           IntegerValue(0));
-        CHECK(
-            lower_than.AddLiteralTerm(Literal(literal_index), IntegerValue(1)));
-        CHECK(lower_than.AddLiteralTerm(Literal(prev_literal_index),
-                                        IntegerValue(-1)));
-        if (!lower_than.IsEmpty()) constraints->push_back(lower_than.Build());
+        // Add var <= prev_var, which is the same as var + not(prev_var) <= 1
+        relaxation->at_most_ones.push_back(
+            {Literal(literal_index), Literal(prev_literal_index).Negated()});
       }
       prev_used_bound = entry.first;
       prev_literal_index = literal_index;
     }
-    if (!lb_constraint.IsEmpty()) constraints->push_back(lb_constraint.Build());
+    if (!lb_constraint.IsEmpty()) {
+      relaxation->linear_constraints.push_back(lb_constraint.Build());
+    }
   }
 
   // Do the same for the var <= side by using NegationOfVar().
@@ -221,7 +233,9 @@ void AppendPartialGreaterThanEncodingRelaxation(
       if (!lb_constraint.AddLiteralTerm(entry.second, diff)) continue;
       prev_used_bound = entry.first;
     }
-    if (!lb_constraint.IsEmpty()) constraints->push_back(lb_constraint.Build());
+    if (!lb_constraint.IsEmpty()) {
+      relaxation->linear_constraints.push_back(lb_constraint.Build());
+    }
   }
 }
 

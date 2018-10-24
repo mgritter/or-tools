@@ -290,7 +290,7 @@ Status RevisedSimplex::Solve(const LinearProgram& lp, TimeLimit* time_limit) {
       if (reduced_costs_.ComputeMaximumDualResidual() > tolerance ||
           variable_values_.ComputeMaximumPrimalResidual() > tolerance ||
           reduced_costs_.ComputeMaximumDualInfeasibility() > tolerance) {
-        VLOG(1) << "DUAL_UNBOUNDED was reported, but the residual and/or"
+        VLOG(1) << "DUAL_UNBOUNDED was reported, but the residual and/or "
                 << "dual infeasibility is above the tolerance";
       }
       break;
@@ -1175,8 +1175,8 @@ Status RevisedSimplex::Initialize(const LinearProgram& lp) {
         reduced_costs_.ClearAndRemoveCostShifts();
         solve_from_scratch = false;
       } else {
-        VLOG(1) << "RevisedSimplex is not using the externally provided "
-                   "basis because it is not factorizable.";
+        LOG(WARNING) << "RevisedSimplex is not using the externally provided "
+                        "basis because it is not factorizable.";
       }
     } else if (!parameters_.use_dual_simplex()) {
       // With primal simplex, always clear dual norms and dual pricing.
@@ -2576,6 +2576,7 @@ Status RevisedSimplex::DualMinimize(TimeLimit* time_limit) {
   num_consecutive_degenerate_iterations_ = 0;
   bool refactorize = false;
   std::vector<ColIndex> bound_flip_candidates;
+  std::vector<std::pair<RowIndex, ColIndex>> to_ignore;
 
   // Leaving variable.
   RowIndex leaving_row;
@@ -2698,6 +2699,11 @@ Status RevisedSimplex::DualMinimize(TimeLimit* time_limit) {
     }
 
     update_row_.ComputeUpdateRow(leaving_row);
+    for (std::pair<RowIndex, ColIndex> pair : to_ignore) {
+      if (pair.first == leaving_row) {
+        update_row_.IgnoreUpdatePosition(pair.second);
+      }
+    }
     if (feasibility_phase_) {
       GLOP_RETURN_IF_ERROR(entering_variable_.DualPhaseIChooseEnteringColumn(
           update_row_, cost_variation, &entering_col, &ratio));
@@ -2756,9 +2762,10 @@ Status RevisedSimplex::DualMinimize(TimeLimit* time_limit) {
       VLOG(1) << "Do not pivot by " << entering_coeff
               << " because the direction is " << direction_[leaving_row];
       refactorize = true;
-      update_row_.IgnoreUpdatePosition(entering_col);
+      to_ignore.push_back({leaving_row, entering_col});
       continue;
     }
+    to_ignore.clear();
 
     // This test takes place after the check for optimality/feasibility because
     // when running with 0 iterations, we still want to report

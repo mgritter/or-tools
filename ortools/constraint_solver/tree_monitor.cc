@@ -17,12 +17,12 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include <fstream>
 #include <iostream>
+#include "absl/container/flat_hash_map.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
@@ -180,7 +180,7 @@ class TreeDecisionVisitor : public DecisionVisitor {
 // not support this.
 class TreeMonitor : public SearchMonitor {
  public:
-  typedef std::unordered_map<std::string, IntVar const*> IntVarMap;
+  typedef absl::flat_hash_map<std::string, IntVar const*> IntVarMap;
 
   TreeMonitor(Solver* const solver, const IntVar* const* vars, int size,
               const std::string& filename_tree,
@@ -239,7 +239,7 @@ class TreeMonitor : public SearchMonitor {
   const std::string filename_visualizer_;
   int id_counter_;
   std::string last_decision_;
-  std::unordered_map<std::string, int64> last_value_;
+  absl::flat_hash_map<std::string, int64> last_value_;
   std::string last_variable_;
   int64 min_;
   int64 max_;
@@ -312,7 +312,7 @@ class TreeNode {
 
   // Adds a new child, initializes it and returns the corresponding pointer.
   bool AddChild(int id, const std::string& name,
-                std::unordered_map<std::string, int64> const& last_value,
+                absl::flat_hash_map<std::string, int64> const& last_value,
                 bool is_final_node, TreeMonitor::IntVarMap const& vars,
                 TreeNode** child) {
     CHECK(child != nullptr);

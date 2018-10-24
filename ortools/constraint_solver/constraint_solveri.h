@@ -55,9 +55,9 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
@@ -2084,17 +2084,17 @@ class ArgumentHolder {
 
  private:
   std::string type_name_;
-  std::unordered_map<std::string, int64> integer_argument_;
-  std::unordered_map<std::string, std::vector<int64> > integer_array_argument_;
-  std::unordered_map<std::string, IntTupleSet> matrix_argument_;
-  std::unordered_map<std::string, IntExpr*> integer_expression_argument_;
-  std::unordered_map<std::string, IntervalVar*> interval_argument_;
-  std::unordered_map<std::string, SequenceVar*> sequence_argument_;
-  std::unordered_map<std::string, std::vector<IntVar*> >
+  absl::flat_hash_map<std::string, int64> integer_argument_;
+  absl::flat_hash_map<std::string, std::vector<int64> > integer_array_argument_;
+  absl::flat_hash_map<std::string, IntTupleSet> matrix_argument_;
+  absl::flat_hash_map<std::string, IntExpr*> integer_expression_argument_;
+  absl::flat_hash_map<std::string, IntervalVar*> interval_argument_;
+  absl::flat_hash_map<std::string, SequenceVar*> sequence_argument_;
+  absl::flat_hash_map<std::string, std::vector<IntVar*> >
       integer_variable_array_argument_;
-  std::unordered_map<std::string, std::vector<IntervalVar*> >
+  absl::flat_hash_map<std::string, std::vector<IntervalVar*> >
       interval_array_argument_;
-  std::unordered_map<std::string, std::vector<SequenceVar*> >
+  absl::flat_hash_map<std::string, std::vector<SequenceVar*> >
       sequence_array_argument_;
 };
 

@@ -15,10 +15,10 @@
 #include <cmath>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "ortools/base/commandlineflags.h"

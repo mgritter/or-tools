@@ -15,8 +15,8 @@
 
 #include <cmath>
 #include <limits>
-#include <unordered_set>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "ortools/base/commandlineflags.h"
@@ -55,7 +55,7 @@ class NameManager {
   std::string MakeUniqueName(const std::string& name);
 
  private:
-  std::unordered_set<std::string> names_set_;
+  absl::flat_hash_set<std::string> names_set_;
   int last_n_;
 };
 

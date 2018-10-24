@@ -15,12 +15,13 @@
 #include <cmath>
 #include <cstddef>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_format.h"
 #include "absl/time/clock.h"
+#include "absl/time/time.h"
 #include "ortools/base/file.h"
 #include "ortools/base/hash.h"
 #include "ortools/base/integral_types.h"
@@ -269,8 +270,8 @@ class DemonProfiler : public PropagationMonitor {
     if (file::Open(filename, "w", &file, file::Defaults()).ok()) {
       file::WriteString(file, model, file::Defaults()).IgnoreError();
       std::vector<Container> to_sort;
-      for (std::unordered_map<const Constraint*,
-                              ConstraintRuns*>::const_iterator it =
+      for (absl::flat_hash_map<const Constraint*,
+                               ConstraintRuns*>::const_iterator it =
                constraint_map_.begin();
            it != constraint_map_.end(); ++it) {
         const Constraint* const ct = it->first;
@@ -422,9 +423,9 @@ class DemonProfiler : public PropagationMonitor {
   Constraint* active_constraint_;
   Demon* active_demon_;
   const int64 start_time_ns_;
-  std::unordered_map<const Constraint*, ConstraintRuns*> constraint_map_;
-  std::unordered_map<const Demon*, DemonRuns*> demon_map_;
-  std::unordered_map<const Constraint*, std::vector<DemonRuns*> >
+  absl::flat_hash_map<const Constraint*, ConstraintRuns*> constraint_map_;
+  absl::flat_hash_map<const Demon*, DemonRuns*> demon_map_;
+  absl::flat_hash_map<const Constraint*, std::vector<DemonRuns*> >
       demons_per_constraint_;
 };
 

@@ -14,8 +14,8 @@
 #include "ortools/flatzinc/solver.h"
 
 #include <string>
-#include <unordered_set>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "ortools/base/hash.h"
@@ -147,11 +147,11 @@ namespace {
 struct ConstraintsWithRequiredVariables {
   Constraint* ct;
   int index;
-  std::unordered_set<IntegerVariable*> required;
+  absl::flat_hash_set<IntegerVariable*> required;
 
   ConstraintsWithRequiredVariables(
       Constraint* cte, int i,
-      const std::unordered_set<IntegerVariable*>& defined)
+      const absl::flat_hash_set<IntegerVariable*>& defined)
       : ct(cte), index(i) {
     // Collect required variables.
     for (const Argument& arg : ct->arguments) {
@@ -200,7 +200,7 @@ bool Solver::Extract() {
   int extracted_variables = 0;
   int extracted_constants = 0;
   int skipped_variables = 0;
-  std::unordered_set<IntegerVariable*> defined_variables;
+  absl::flat_hash_set<IntegerVariable*> defined_variables;
   for (IntegerVariable* const var : model_.variables()) {
     if (var->defining_constraint == nullptr && var->active) {
       data_.Extract(var);
@@ -231,8 +231,8 @@ bool Solver::Extract() {
   int index = 0;
   std::vector<ConstraintsWithRequiredVariables*> to_sort;
   std::vector<Constraint*> sorted;
-  std::unordered_map<const IntegerVariable*,
-                     std::vector<ConstraintsWithRequiredVariables*>>
+  absl::flat_hash_map<const IntegerVariable*,
+                      std::vector<ConstraintsWithRequiredVariables*>>
       dependencies;
   for (Constraint* ct : model_.constraints()) {
     if (ct != nullptr && ct->active) {
@@ -376,7 +376,7 @@ void Solver::ParseSearchAnnotations(bool ignore_unknown,
   }
 
   FZLOG << "  - parsing search annotations" << FZENDL;
-  std::unordered_set<IntVar*> added;
+  absl::flat_hash_set<IntVar*> added;
   for (const Annotation& ann : flat_annotations) {
     FZLOG << "  - parse " << ann.DebugString() << FZENDL;
     if (ann.IsFunctionCallWithIdentifier("int_search")) {
@@ -530,8 +530,8 @@ void Solver::AddCompletionDecisionBuilders(
     const std::vector<IntVar*>& defined_variables,
     const std::vector<IntVar*>& active_variables, SearchLimit* limit,
     std::vector<DecisionBuilder*>* builders) {
-  std::unordered_set<IntVar*> defined_set(defined_variables.begin(),
-                                          defined_variables.end());
+  absl::flat_hash_set<IntVar*> defined_set(defined_variables.begin(),
+                                           defined_variables.end());
   std::vector<IntVar*> output_variables;
   CollectOutputVariables(&output_variables);
   std::vector<IntVar*> secondary_vars;

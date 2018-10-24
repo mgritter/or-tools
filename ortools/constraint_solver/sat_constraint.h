@@ -28,9 +28,8 @@
 #ifndef OR_TOOLS_CONSTRAINT_SOLVER_SAT_CONSTRAINT_H_
 #define OR_TOOLS_CONSTRAINT_SOLVER_SAT_CONSTRAINT_H_
 
-#include <unordered_map>
-#include <unordered_set>
-
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "ortools/base/hash.h"
 #include "ortools/base/map_util.h"
 #include "ortools/constraint_solver/constraint_solver.h"
@@ -126,7 +125,7 @@ class BooleanVariableManager {
   sat::SatSolver* solver_;
   std::vector<IntVar*> registered_int_vars_;
   std::vector<IntVarLiteralGetter> associated_variables_;
-  std::unordered_map<IntVar*, int> registration_index_map_;
+  absl::flat_hash_map<IntVar*, int> registration_index_map_;
   gtl::ITIVector<sat::BooleanVariable, std::pair<IntVar*, int64>>
       variable_meaning_;
   DISALLOW_COPY_AND_ASSIGN(BooleanVariableManager);

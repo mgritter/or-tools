@@ -17,12 +17,15 @@
 #include <memory>
 #include <queue>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "absl/base/casts.h"
+#include "absl/container/flat_hash_map.h"
 #include "absl/memory/memory.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
+#include "absl/strings/str_join.h"
 #include "ortools/base/bitmap.h"
 #include "ortools/base/commandlineflags.h"
 #include "ortools/base/hash.h"
@@ -3303,8 +3306,7 @@ int64 GuidedLocalSearchPenaltiesTable::Value(const Arc& arc) const {
   }
 }
 
-// Sparse GLS penalties implementation using a hash_map to store penalties.
-
+// Sparse GLS penalties implementation using hash_map to store penalties.
 class GuidedLocalSearchPenaltiesMap : public GuidedLocalSearchPenalties {
  public:
   explicit GuidedLocalSearchPenaltiesMap(int size);
@@ -3316,7 +3318,7 @@ class GuidedLocalSearchPenaltiesMap : public GuidedLocalSearchPenalties {
 
  private:
   Bitmap penalized_;
-  std::unordered_map<Arc, int64> penalties_;
+  absl::flat_hash_map<Arc, int64> penalties_;
 };
 
 GuidedLocalSearchPenaltiesMap::GuidedLocalSearchPenaltiesMap(int size)
@@ -3376,7 +3378,7 @@ class GuidedLocalSearch : public Metaheuristic {
   int64 assignment_penalized_value_;
   int64 old_penalized_value_;
   const std::vector<IntVar*> vars_;
-  std::unordered_map<const IntVar*, int64> indices_;
+  absl::flat_hash_map<const IntVar*, int64> indices_;
   const double penalty_factor_;
   std::unique_ptr<GuidedLocalSearchPenalties> penalties_;
   std::unique_ptr<int64[]> current_penalized_values_;

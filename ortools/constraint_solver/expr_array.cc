@@ -19,14 +19,13 @@
 #include <string>
 #include <vector>
 
+#include "absl/strings/str_format.h"
+#include "absl/strings/str_join.h"
 #include "ortools/base/integral_types.h"
 #include "ortools/base/logging.h"
 #include "ortools/base/mathutil.h"
 #include "ortools/constraint_solver/constraint_solver.h"
 #include "ortools/constraint_solver/constraint_solveri.h"
-
-#include "absl/strings/str_format.h"
-#include "absl/strings/str_join.h"
 #include "ortools/util/saturated_arithmetic.h"
 #include "ortools/util/string_array.h"
 
@@ -2385,7 +2384,7 @@ class PositiveBooleanScalProdEqCst : public Constraint {
 class ExprLinearizer : public ModelParser {
  public:
   explicit ExprLinearizer(
-      std::unordered_map<IntVar*, int64>* const variables_to_coefficients)
+      absl::flat_hash_map<IntVar*, int64>* const variables_to_coefficients)
       : variables_to_coefficients_(variables_to_coefficients), constant_(0) {}
 
   ~ExprLinearizer() override {}
@@ -2647,7 +2646,7 @@ class ExprLinearizer : public ModelParser {
 
   // We do need a IntVar* as key, and not const IntVar*, because clients of this
   // class typically iterate over the map keys and use them as mutable IntVar*.
-  std::unordered_map<IntVar*, int64>* const variables_to_coefficients_;
+  absl::flat_hash_map<IntVar*, int64>* const variables_to_coefficients_;
   std::vector<int64> multipliers_;
   int64 constant_;
 };
@@ -2685,7 +2684,7 @@ void DeepLinearize(Solver* const solver, const std::vector<IntVar*>& pre_vars,
   }
   if (need_linearization) {
     // Instrospect the variables to simplify the sum.
-    std::unordered_map<IntVar*, int64> variables_to_coefficients;
+    absl::flat_hash_map<IntVar*, int64> variables_to_coefficients;
     ExprLinearizer linearizer(&variables_to_coefficients);
     for (int i = 0; i < pre_vars.size(); ++i) {
       linearizer.Visit(pre_vars[i], pre_coefs[i]);
@@ -3209,7 +3208,7 @@ IntExpr* MakeScalProdFct(Solver* solver, const std::vector<IntVar*>& pre_vars,
 }
 
 IntExpr* MakeSumFct(Solver* solver, const std::vector<IntVar*>& pre_vars) {
-  std::unordered_map<IntVar*, int64> variables_to_coefficients;
+  absl::flat_hash_map<IntVar*, int64> variables_to_coefficients;
   ExprLinearizer linearizer(&variables_to_coefficients);
   for (int i = 0; i < pre_vars.size(); ++i) {
     linearizer.Visit(pre_vars[i], 1);

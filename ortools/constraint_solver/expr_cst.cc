@@ -1411,7 +1411,7 @@ class IsMemberCt : public Constraint {
   }
 
   IntVar* const var_;
-  std::unordered_set<int64> values_as_set_;
+  absl::flat_hash_set<int64> values_as_set_;
   std::vector<int64> values_;
   IntVar* const boolvar_;
   int support_;

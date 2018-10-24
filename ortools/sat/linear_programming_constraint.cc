@@ -297,6 +297,11 @@ bool LinearProgrammingConstraint::Propagate() {
   //
   // TODO(user): Put more at the root, and less afterwards?
   parameters.set_max_number_of_iterations(500);
+  if (sat_parameters_.use_exact_lp_reason()) {
+    parameters.set_change_status_to_imprecise(false);
+    parameters.set_primal_feasibility_tolerance(1e-7);
+    parameters.set_dual_feasibility_tolerance(1e-7);
+  }
 
   simplex_.SetParameters(parameters);
   simplex_.NotifyThatMatrixIsUnchangedForNextSolve();

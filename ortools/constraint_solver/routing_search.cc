@@ -20,9 +20,10 @@
 #include <map>
 #include <numeric>
 #include <set>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
+
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "ortools/base/small_map.h"
 #include "ortools/base/small_ordered_set.h"
 #include "ortools/constraint_solver/routing.h"
@@ -1065,7 +1066,7 @@ class PathCumulFilter : public BasePathFilter {
   int64 accepted_objective_value_;
   // Map between paths and path soft cumul bound costs. The paths are indexed
   // by the index of the start node of the path.
-  std::unordered_map<int64, int64> current_cumul_cost_values_;
+  absl::flat_hash_map<int64, int64> current_cumul_cost_values_;
   int64 cumul_cost_delta_;
   const int64 global_span_cost_coefficient_;
   std::vector<SoftBound> cumul_soft_bounds_;
@@ -3053,7 +3054,7 @@ void GlobalCheapestInsertionFilteredDecisionBuilder::UpdatePickupPositions(
   // the entries which are being kept and must be updated.
   using Pair = std::pair<int64, int64>;
   using Insertion = std::pair<Pair, /*delivery_insert_after*/ int64>;
-  std::unordered_set<Insertion> existing_insertions;
+  absl::flat_hash_set<Insertion> existing_insertions;
   std::vector<PairEntry*> to_remove;
   for (PairEntry* const pair_entry :
        pickup_to_entries->at(pickup_insert_after)) {
@@ -3161,7 +3162,7 @@ void GlobalCheapestInsertionFilteredDecisionBuilder::UpdateDeliveryPositions(
   // the entries which are being kept and must be updated.
   using Pair = std::pair<int64, int64>;
   using Insertion = std::pair<Pair, /*pickup_insert_after*/ int64>;
-  std::unordered_set<Insertion> existing_insertions;
+  absl::flat_hash_set<Insertion> existing_insertions;
   std::vector<PairEntry*> to_remove;
   for (PairEntry* const pair_entry :
        delivery_to_entries->at(delivery_insert_after)) {
@@ -4114,7 +4115,7 @@ class SavingsFilteredDecisionBuilder::SavingsContainer {
     if (single_vehicle_type_) {
       return;
     }
-    std::unordered_map<int, int>& arc_indices =
+    absl::flat_hash_map<int, int>& arc_indices =
         arc_indices_per_before_node_[before_node];
     const auto& arc_inserted = arc_indices.insert(
         std::make_pair(after_node, costs_and_savings_per_arc_.size()));
@@ -4156,7 +4157,7 @@ class SavingsFilteredDecisionBuilder::SavingsContainer {
   const bool single_vehicle_type_;
   std::vector<std::vector<std::pair</*cost*/ int64, Saving>>>
       costs_and_savings_per_arc_;
-  std::vector<std::unordered_map</*after_node*/ int, /*arc_index*/ int>>
+  std::vector<absl::flat_hash_map</*after_node*/ int, /*arc_index*/ int>>
       arc_indices_per_before_node_;
   std::vector<std::deque<SavingAndArc>> skipped_savings_starting_at_;
   std::vector<std::deque<SavingAndArc>> skipped_savings_ending_at_;
@@ -4243,7 +4244,7 @@ void SavingsFilteredDecisionBuilder::ComputeVehicleTypes() {
   vehicles_per_vehicle_class_.clear();
   vehicles_per_vehicle_class_.resize(model()->GetVehicleClassesCount());
 
-  std::unordered_map<int64, int> type_to_type_index;
+  absl::flat_hash_map<int64, int> type_to_type_index;
 
   for (int v = 0; v < vehicles; v++) {
     const int start = manager_->IndexToNode(model()->Start(v)).value();

@@ -13,8 +13,7 @@
 
 #include "ortools/flatzinc/flatzinc_constraints.h"
 
-#include <unordered_set>
-
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_format.h"
 #include "ortools/base/commandlineflags.h"
 #include "ortools/constraint_solver/constraint_solveri.h"
@@ -841,7 +840,7 @@ class KDiffn : public Constraint {
   const int64 num_boxes_;
   const int64 num_dims_;
   Demon* delayed_demon_;
-  std::unordered_set<int> to_propagate_;
+  absl::flat_hash_set<int> to_propagate_;
   std::vector<int> neighbors_;
   uint64 fail_stamp_;
 };

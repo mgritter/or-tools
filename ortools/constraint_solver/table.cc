@@ -17,9 +17,9 @@
 #include <algorithm>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "ortools/base/commandlineflags.h"
@@ -237,7 +237,7 @@ class BasePositiveTableConstraint : public Constraint {
 
 class PositiveTableConstraint : public BasePositiveTableConstraint {
  public:
-  typedef std::unordered_map<int, std::vector<uint64>> ValueBitset;
+  typedef absl::flat_hash_map<int, std::vector<uint64>> ValueBitset;
 
   PositiveTableConstraint(Solver* const s, const std::vector<IntVar*>& vars,
                           const IntTupleSet& tuples)

@@ -14,8 +14,8 @@
 #include "ortools/sat/cp_model_search.h"
 
 #include <random>
-#include <unordered_map>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_format.h"
 #include "ortools/base/cleanup.h"
 #include "ortools/sat/cp_model_utils.h"
@@ -41,7 +41,7 @@ struct VarValue {
 };
 
 const std::function<LiteralIndex()> ConstructSearchStrategyInternal(
-    const std::unordered_map<int, std::pair<int64, int64>>&
+    const absl::flat_hash_map<int, std::pair<int64, int64>>&
         var_to_coeff_offset_pair,
     const std::vector<Strategy>& strategies, Model* model) {
   IntegerEncoder* const integer_encoder = model->GetOrCreate<IntegerEncoder>();
@@ -190,7 +190,7 @@ std::function<LiteralIndex()> ConstructSearchStrategy(
   }
 
   std::vector<Strategy> strategies;
-  std::unordered_map<int, std::pair<int64, int64>> var_to_coeff_offset_pair;
+  absl::flat_hash_map<int, std::pair<int64, int64>> var_to_coeff_offset_pair;
   for (const DecisionStrategyProto& proto : cp_model_proto.search_strategy()) {
     strategies.push_back(Strategy());
     Strategy& strategy = strategies.back();

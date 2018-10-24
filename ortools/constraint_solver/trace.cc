@@ -15,9 +15,9 @@
 #include <cmath>
 #include <stack>
 #include <string>
-#include <unordered_map>
 #include <utility>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "ortools/base/commandlineflags.h"

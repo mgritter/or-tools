@@ -17,8 +17,8 @@
 #include <cstdlib>
 #include <limits>
 #include <numeric>
-#include <unordered_map>
 #include <utility>
+#include "absl/container/flat_hash_map.h"
 
 #include "absl/strings/str_format.h"
 #include "ortools/base/commandlineflags.h"
@@ -399,7 +399,7 @@ std::string LinearBooleanProblemToCnfString(
   const int first_slack_variable = problem.original_num_variables();
 
   // This will contains the objective.
-  std::unordered_map<int, int64> literal_to_weight;
+  absl::flat_hash_map<int, int64> literal_to_weight;
   std::vector<std::pair<int, int64>> non_slack_objective;
 
   // This will be the weight of the "hard" clauses in the wcnf format. It must
@@ -509,7 +509,7 @@ class IdGenerator {
   }
 
  private:
-  std::unordered_map<std::pair<int, int64>, int> id_map_;
+  absl::flat_hash_map<std::pair<int, int64>, int> id_map_;
 };
 }  // namespace.
 

@@ -16,8 +16,8 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
-#include <unordered_map>
 #include <utility>
+#include "absl/container/flat_hash_map.h"
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
@@ -201,7 +201,7 @@ RowIndex LinearProgram::CreateNewConstraint() {
 }
 
 ColIndex LinearProgram::FindOrCreateVariable(const std::string& variable_id) {
-  const std::unordered_map<std::string, ColIndex>::iterator it =
+  const absl::flat_hash_map<std::string, ColIndex>::iterator it =
       variable_table_.find(variable_id);
   if (it != variable_table_.end()) {
     return it->second;
@@ -215,7 +215,7 @@ ColIndex LinearProgram::FindOrCreateVariable(const std::string& variable_id) {
 
 RowIndex LinearProgram::FindOrCreateConstraint(
     const std::string& constraint_id) {
-  const std::unordered_map<std::string, RowIndex>::iterator it =
+  const absl::flat_hash_map<std::string, RowIndex>::iterator it =
       constraint_table_.find(constraint_id);
   if (it != constraint_table_.end()) {
     return it->second;
@@ -1053,7 +1053,7 @@ void LinearProgram::DeleteColumns(const DenseBooleanRow& columns_to_delete) {
   variable_names_.resize(new_index, "");
 
   // Remove the id of the deleted columns and adjust the index of the other.
-  std::unordered_map<std::string, ColIndex>::iterator it =
+  absl::flat_hash_map<std::string, ColIndex>::iterator it =
       variable_table_.begin();
   while (it != variable_table_.end()) {
     const ColIndex col = it->second;
@@ -1208,7 +1208,7 @@ void LinearProgram::DeleteRows(const DenseBooleanColumn& rows_to_delete) {
   matrix_.DeleteRows(new_index, permutation);
 
   // Remove the id of the deleted rows and adjust the index of the other.
-  std::unordered_map<std::string, RowIndex>::iterator it =
+  absl::flat_hash_map<std::string, RowIndex>::iterator it =
       constraint_table_.begin();
   while (it != constraint_table_.end()) {
     const RowIndex row = it->second;

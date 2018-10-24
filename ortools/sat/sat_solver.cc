@@ -242,9 +242,14 @@ bool SatSolver::AddLinearConstraintInternal(
 
   // Detect at most one constraints. Note that this use the fact that the
   // coefficient are sorted.
+  //
+  // TODO(user): For now we don't put at most ones with a size of more than 100
+  // into the binary_implication_graph_ because the later has no custom code
+  // to handle large at most one, and it will simply expand it into a quadratic
+  // number of implications.
   if (parameters_->treat_binary_clauses_separately() &&
       !parameters_->use_pb_resolution() && max_coeff <= rhs &&
-      2 * min_coeff > rhs) {
+      2 * min_coeff > rhs && cst.size() <= 100) {
     literals_scratchpad_.clear();
     for (const LiteralWithCoeff& term : cst) {
       literals_scratchpad_.push_back(term.literal);

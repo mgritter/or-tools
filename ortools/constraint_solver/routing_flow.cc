@@ -141,7 +141,7 @@ bool RoutingModel::SolveMatchingModel(Assignment* assignment) {
   // Create pickup and delivery pair flow nodes.
   // TODO(user): Check pair alternatives correspond exactly to at most two
   // disjunctions.
-  std::unordered_map<int, std::pair<int64, int64>> flow_to_pd;
+  absl::flat_hash_map<int, std::pair<int64, int64>> flow_to_pd;
   for (const auto& pd_pairs : GetPickupAndDeliveryPairs()) {
     disjunction_to_flow_nodes.push_back({});
     absl::flat_hash_set<DisjunctionIndex> disjunctions;
@@ -173,7 +173,7 @@ bool RoutingModel::SolveMatchingModel(Assignment* assignment) {
     disjunction_penalties.push_back(penalty);
   }
   // Create non-pickup and delivery flow nodes.
-  std::unordered_map<int, int64> flow_to_non_pd;
+  absl::flat_hash_map<int, int64> flow_to_non_pd;
   for (int node = 0; node < Size(); ++node) {
     if (IsStart(node) || in_disjunction[node]) continue;
     const std::vector<DisjunctionIndex>& disjunctions =
@@ -203,7 +203,7 @@ bool RoutingModel::SolveMatchingModel(Assignment* assignment) {
   // Build a flow node for each disjunction and corresponding arcs.
   // Each node exits to the sink through a node, for which the outgoing
   // capacity is one (only one of the nodes in the disjunction is performed).
-  std::unordered_map<int, int> flow_to_disjunction;
+  absl::flat_hash_map<int, int> flow_to_disjunction;
   for (int i = 0; i < disjunction_to_flow_nodes.size(); ++i) {
     const std::vector<int64>& flow_nodes = disjunction_to_flow_nodes[i];
     if (flow_nodes.size() == 1) {
@@ -223,7 +223,7 @@ bool RoutingModel::SolveMatchingModel(Assignment* assignment) {
   // or
   // start(vehicle) -> node -> end(vehicle)
   std::vector<int> vehicle_to_flow;
-  std::unordered_map<int, int> flow_to_vehicle;
+  absl::flat_hash_map<int, int> flow_to_vehicle;
   for (int vehicle = 0; vehicle < vehicles(); ++vehicle) {
     const int64 start = Start(vehicle);
     const int64 end = End(vehicle);

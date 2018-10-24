@@ -26,8 +26,8 @@
 
 #include <algorithm>  // for max
 #include <string>     // for std::string
-#include <unordered_map>
-#include <vector>  // for vector
+#include <vector>     // for vector
+#include "absl/container/flat_hash_map.h"
 
 #include "ortools/base/commandlineflags.h"
 #include "ortools/base/hash.h"
@@ -211,16 +211,16 @@ class MPSReader {
   SectionId section_;
 
   // Maps section mnemonic --> section id.
-  std::unordered_map<std::string, SectionId> section_name_to_id_map_;
+  absl::flat_hash_map<std::string, SectionId> section_name_to_id_map_;
 
   // Maps row type mnemonic --> row type id.
-  std::unordered_map<std::string, MPSRowType> row_name_to_id_map_;
+  absl::flat_hash_map<std::string, MPSRowType> row_name_to_id_map_;
 
   // Maps bound type mnemonic --> bound type id.
-  std::unordered_map<std::string, BoundTypeId> bound_name_to_id_map_;
+  absl::flat_hash_map<std::string, BoundTypeId> bound_name_to_id_map_;
 
   // Set of bound type mnemonics that constrain variables to be integer.
-  std::unordered_set<std::string> integer_type_names_set_;
+  absl::flat_hash_set<std::string> integer_type_names_set_;
 
   // The current line number in the file being parsed.
   int64 line_num_;

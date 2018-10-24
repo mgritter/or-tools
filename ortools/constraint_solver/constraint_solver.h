@@ -68,11 +68,11 @@
 #include <iosfwd>
 #include <memory>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_format.h"
 #include "ortools/base/commandlineflags.h"
 #include "ortools/base/hash.h"
@@ -2342,7 +2342,7 @@ class Solver {
 #if !defined(SWIG)
   // Compute the number of constraints a variable is attached to.
   ModelVisitor* MakeVariableDegreeVisitor(
-      std::unordered_map<const IntVar*, int>* const map);
+      absl::flat_hash_map<const IntVar*, int>* const map);
 #endif
 
   // ----- Symmetry Breaking -----
@@ -3053,11 +3053,11 @@ class Solver {
 
   const std::string name_;
   const ConstraintSolverParameters parameters_;
-  std::unordered_map<const PropagationBaseObject*, std::string>
+  absl::flat_hash_map<const PropagationBaseObject*, std::string>
       propagation_object_names_;
-  std::unordered_map<const PropagationBaseObject*, IntegerCastInfo>
+  absl::flat_hash_map<const PropagationBaseObject*, IntegerCastInfo>
       cast_information_;
-  std::unordered_set<const Constraint*> cast_constraints_;
+  absl::flat_hash_set<const Constraint*> cast_constraints_;
   const std::string empty_name_;
   std::unique_ptr<Queue> queue_;
   std::unique_ptr<Trail> trail_;
@@ -4855,9 +4855,9 @@ class AssignmentContainer {
     }
     // The == should be order-independent
     EnsureMapIsUpToDate();
-    // Do not use the hash_map::== operator! It compares both content
-    // and how the map is hashed (e.g., number of buckets). This is not
-    // what we want.
+    // Do not use the hash_map::== operator! It
+    // compares both content and how the map is hashed (e.g., number of
+    // buckets). This is not what we want.
     for (const E& element : container.elements_) {
       const int position =
           gtl::FindWithDefault(elements_map_, element.Var(), -1);
@@ -4873,8 +4873,8 @@ class AssignmentContainer {
 
  private:
   void EnsureMapIsUpToDate() const {
-    std::unordered_map<const V*, int>* map =
-        const_cast<std::unordered_map<const V*, int>*>(&elements_map_);
+    absl::flat_hash_map<const V*, int>* map =
+        const_cast<absl::flat_hash_map<const V*, int>*>(&elements_map_);
     for (int i = map->size(); i < elements_.size(); ++i) {
       (*map)[elements_[i].Var()] = i;
     }
@@ -4901,7 +4901,7 @@ class AssignmentContainer {
   }
 
   std::vector<E> elements_;
-  std::unordered_map<const V*, int> elements_map_;
+  absl::flat_hash_map<const V*, int> elements_map_;
 };
 
 // ----- Assignment -----

@@ -21,10 +21,10 @@ namespace operations_research {
 
 // See ortools/base/file.h
 ::util::Status PortableFileSetContents(absl::string_view file_name,
-                               absl::string_view content);
+                                       absl::string_view content);
 
 ::util::Status PortableFileGetContents(absl::string_view file_name,
-                               std::string* output);
+                                       std::string* output);
 
 ::util::Status PortableDeleteFile(absl::string_view file_name);
 

@@ -16,8 +16,8 @@
 #include <atomic>
 #include <cmath>
 #include <limits>
-#include <unordered_map>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_split.h"
@@ -92,8 +92,8 @@ struct CpModelProtoWithMapping {
   SatParameters parameters;
 
   // Mapping from flatzinc variables to CpModelProto variables.
-  std::unordered_map<fz::IntegerVariable*, int> fz_var_to_index;
-  std::unordered_map<int64, int> constant_value_to_index;
+  absl::flat_hash_map<fz::IntegerVariable*, int> fz_var_to_index;
+  absl::flat_hash_map<int64, int> constant_value_to_index;
 };
 
 int CpModelProtoWithMapping::LookupConstant(int64 value) {
@@ -226,8 +226,15 @@ void CpModelProtoWithMapping::FillConstraint(const fz::Constraint& fz_ct,
   } else if (fz_ct.type == "bool_eq" || fz_ct.type == "int_eq" ||
              fz_ct.type == "bool2int") {
     FillAMinusBInDomain({0, 0}, fz_ct, ct);
-  } else if (fz_ct.type == "bool_ne" || fz_ct.type == "bool_not" ||
-             fz_ct.type == "int_ne") {
+  } else if (fz_ct.type == "bool_ne" || fz_ct.type == "bool_not") {
+    auto* arg = ct->mutable_linear();
+    arg->add_vars(LookupVar(fz_ct.arguments[0]));
+    arg->add_coeffs(1);
+    arg->add_vars(LookupVar(fz_ct.arguments[1]));
+    arg->add_coeffs(1);
+    arg->add_domain(1);
+    arg->add_domain(1);
+  } else if (fz_ct.type == "int_ne") {
     FillAMinusBInDomain({kint64min, -1, 1, kint64max}, fz_ct, ct);
   } else if (fz_ct.type == "int_lin_eq") {
     const int64 rhs = fz_ct.arguments[2].values[0];

@@ -21,11 +21,10 @@
 #include <numeric>
 #include <set>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_join.h"
 #include "ortools/base/hash.h"
@@ -265,7 +264,7 @@ struct PresolveContext {
   // variable with the same constant value. If two variables end up having the
   // same fixed value, then we can detect it using this and add a new
   // equivalence relation. See ExploitFixedDomain().
-  std::unordered_map<int64, int> constant_to_ref;
+  absl::flat_hash_map<int64, int> constant_to_ref;
 
   // Variable <-> constraint graph.
   // The vector list is sorted and contains unique elements.
@@ -285,7 +284,7 @@ struct PresolveContext {
   bool is_unsat = false;
 
   // Just used to display statistics on the presolve rules that were used.
-  std::unordered_map<std::string, int> stats_by_rule_name;
+  absl::flat_hash_map<std::string, int> stats_by_rule_name;
 
   // Temporary storage.
   std::vector<int> tmp_literals;
@@ -328,23 +327,14 @@ bool PresolveEnforcementLiteral(ConstraintProto* ct, PresolveContext* context) {
       continue;
     }
 
-    // TODO(user): because the cumulative and disjunctive constraint refer to
-    // this interval, we cannot simply remove the constraint even if we know
-    // that this optional interval will not be present. We could fix that by
-    // removing this interval from these constraints, but it is difficult to do
-    // that in a general code, so we will need the presolve for these constraint
-    // to take care of that, and then we would be able to remove this interval
-    // if it is not longer used.
-    if (ct->constraint_case() != ConstraintProto::ConstraintCase::kInterval) {
-      if (context->LiteralIsFalse(literal)) {
-        context->UpdateRuleStats("false enforcement literal");
-        return RemoveConstraint(ct, context);
-      } else if (context->IsUnique(literal)) {
-        // We can simply set it to false and ignore the constraint in this case.
-        context->UpdateRuleStats("enforcement literal not used");
-        context->SetLiteralToFalse(literal);
-        return RemoveConstraint(ct, context);
-      }
+    if (context->LiteralIsFalse(literal)) {
+      context->UpdateRuleStats("false enforcement literal");
+      return RemoveConstraint(ct, context);
+    } else if (context->IsUnique(literal)) {
+      // We can simply set it to false and ignore the constraint in this case.
+      context->UpdateRuleStats("enforcement literal not used");
+      context->SetLiteralToFalse(literal);
+      return RemoveConstraint(ct, context);
     }
 
     ct->set_enforcement_literal(new_size++, literal);
@@ -1457,6 +1447,19 @@ bool PresolveAllDiff(ConstraintProto* ct, PresolveContext* context) {
 
 bool PresolveNoOverlap(ConstraintProto* ct, PresolveContext* context) {
   const NoOverlapConstraintProto& proto = ct->no_overlap();
+
+  // Filter absent intervals.
+  int new_size = 0;
+  for (int i = 0; i < proto.intervals_size(); ++i) {
+    const int interval_index = proto.intervals(i);
+    if (context->working_model->constraints(interval_index).constraint_case() ==
+        ConstraintProto::ConstraintCase::CONSTRAINT_NOT_SET) {
+      continue;
+    }
+    ct->mutable_no_overlap()->set_intervals(new_size++, interval_index);
+  }
+  ct->mutable_no_overlap()->mutable_intervals()->Truncate(new_size);
+
   if (proto.intervals_size() == 1) {
     context->UpdateRuleStats("no_overlap: only one interval");
     return RemoveConstraint(ct, context);
@@ -1469,8 +1472,28 @@ bool PresolveNoOverlap(ConstraintProto* ct, PresolveContext* context) {
 }
 
 bool PresolveCumulative(ConstraintProto* ct, PresolveContext* context) {
-  if (HasEnforcementLiteral(*ct)) return false;
   const CumulativeConstraintProto& proto = ct->cumulative();
+
+  // Filter absent intervals.
+  int new_size = 0;
+  bool changed = false;
+  for (int i = 0; i < proto.intervals_size(); ++i) {
+    if (context->working_model->constraints(proto.intervals(i))
+            .constraint_case() ==
+        ConstraintProto::ConstraintCase::CONSTRAINT_NOT_SET) {
+      continue;
+    }
+    ct->mutable_cumulative()->set_intervals(new_size, proto.intervals(i));
+    ct->mutable_cumulative()->set_demands(new_size, proto.demands(i));
+    new_size++;
+  }
+  if (new_size < proto.intervals_size()) {
+    changed = true;
+    ct->mutable_cumulative()->mutable_intervals()->Truncate(new_size);
+    ct->mutable_cumulative()->mutable_demands()->Truncate(new_size);
+  }
+
+  if (HasEnforcementLiteral(*ct)) return false;
   if (!context->IsFixed(proto.capacity())) return false;
   const int64 capacity = context->MinOf(proto.capacity());
 
@@ -1547,7 +1570,7 @@ bool PresolveCumulative(ConstraintProto* ct, PresolveContext* context) {
     }
   }
 
-  return false;
+  return changed;
 }
 
 bool PresolveCircuit(ConstraintProto* ct, PresolveContext* context) {
@@ -1719,7 +1742,7 @@ template <typename ClauseContainer>
 void ExtractClauses(const ClauseContainer& container, CpModelProto* proto) {
   // We regroup the "implication" into bool_and to have a more consise proto and
   // also for nicer information about the number of binary clauses.
-  std::unordered_map<int, int> ref_to_bool_and;
+  absl::flat_hash_map<int, int> ref_to_bool_and;
   for (int i = 0; i < container.NumClauses(); ++i) {
     const std::vector<Literal>& clause = container.Clause(i);
     if (clause.empty()) continue;
@@ -1888,6 +1911,290 @@ void PresolvePureSatPart(PresolveContext* context) {
 
   // Add the postsolver clauses to mapping_model.
   ExtractClauses(postsolver, context->mapping_model);
+}
+
+// TODO(user): The idea behind this was that it is better to have an objective
+// as spreaded as possible. However on some problems this have the opposite
+// effect. Like on a triangular matrix where each expansion reduced the size
+// of the objective by one. Investigate and fix?
+void ExpandObjective(PresolveContext* context) {
+  // This is because we called EncodeObjectiveAsSingleVariable(). Note that
+  // it allows us to update the proto objective domain too.
+  CHECK_EQ(context->working_model->objective().vars_size(), 1);
+  CHECK_EQ(context->working_model->objective().coeffs(0), 1);
+
+  // This is also because of EncodeObjectiveAsSingleVariable(). Note that
+  // we DO NOT count the offset in the domain, which make the code below quite
+  // tricky. TODO(user): maybe we should change that.
+  int64 objective_offset_change = 0;
+  const auto initial_objective_domain =
+      context->DomainOf(context->working_model->objective().vars(0));
+
+  // Replace the objective by its representative.
+  {
+    const int ref = context->working_model->objective().vars(0);
+    const int var = PositiveRef(ref);
+    const AffineRelation::Relation r = context->GetAffineRelation(var);
+    if (r.representative != var) {
+      auto* mutable_objective = context->working_model->mutable_objective();
+      const int coeff = RefIsPositive(ref) ? r.coeff : -r.coeff;
+      const int offset = RefIsPositive(ref) ? r.offset : -r.offset;
+
+      objective_offset_change += offset;
+      mutable_objective->set_coeffs(0, coeff);
+      mutable_objective->set_vars(0, r.representative);
+
+      context->var_to_constraints[var].erase(-1);
+      context->var_to_constraints[r.representative].insert(-1);
+    }
+  }
+
+  // Convert the objective linear expression to a map for ease of use below.
+  std::map<int, int64> objective_map;
+  for (int i = 0; i < context->working_model->objective().vars_size(); ++i) {
+    const int ref = context->working_model->objective().vars(i);
+    const int64 coeff = context->working_model->objective().coeffs(i);
+    objective_map[PositiveRef(ref)] = RefIsPositive(ref) ? coeff : -coeff;
+  }
+
+  // To avoid a bad complexity, we need to compute the number of relevant
+  // constraints for each variables.
+  const int num_variables = context->working_model->variables_size();
+  const int num_constraints = context->working_model->constraints_size();
+  absl::flat_hash_set<int> relevant_constraints;
+  std::vector<int> var_to_num_relevant_constraints(num_variables, 0);
+  for (int ct_index = 0; ct_index < num_constraints; ++ct_index) {
+    const ConstraintProto& ct = context->working_model->constraints(ct_index);
+    // Skip everything that is not a linear equality constraint.
+    if (!ct.enforcement_literal().empty() ||
+        ct.constraint_case() != ConstraintProto::ConstraintCase::kLinear ||
+        ct.linear().domain().size() != 2 ||
+        ct.linear().domain(0) != ct.linear().domain(1)) {
+      continue;
+    }
+
+    relevant_constraints.insert(ct_index);
+    const int num_terms = ct.linear().vars_size();
+    for (int i = 0; i < num_terms; ++i) {
+      var_to_num_relevant_constraints[PositiveRef(ct.linear().vars(i))]++;
+    }
+  }
+
+  // We currently never expand a variable more than once.
+  int num_expansions = 0;
+  absl::flat_hash_set<int> processed_vars;
+  while (!relevant_constraints.empty()) {
+    // Find a not yet expanded var.
+    int objective_var = -1;
+    for (const auto& entry : objective_map) {
+      const int var = entry.first;
+      if (processed_vars.count(var)) continue;
+      if (var_to_num_relevant_constraints[var] == 0) continue;
+      objective_var = var;
+      break;
+    }
+    if (objective_var == -1) break;
+    CHECK(RefIsPositive(objective_var));
+    processed_vars.insert(objective_var);
+
+    int expanded_linear_index = -1;
+    int64 objective_coeff_in_expanded_constraint;
+    int64 size_of_expanded_constraint = 0;
+    const auto& non_deterministic_list =
+        context->var_to_constraints[objective_var];
+    std::vector<int> constraints_with_objective(non_deterministic_list.begin(),
+                                                non_deterministic_list.end());
+    std::sort(constraints_with_objective.begin(),
+              constraints_with_objective.end());
+    for (const int ct_index : constraints_with_objective) {
+      if (ct_index == -1) continue;
+      if (relevant_constraints.count(ct_index) == 0) continue;
+      const ConstraintProto& ct = context->working_model->constraints(ct_index);
+
+      // This constraint is relevant now, but it will never be later because
+      // it will contain the objective_var wich is already processed!
+      relevant_constraints.erase(ct_index);
+      const int num_terms = ct.linear().vars_size();
+      for (int i = 0; i < num_terms; ++i) {
+        var_to_num_relevant_constraints[PositiveRef(ct.linear().vars(i))]--;
+      }
+
+      // Find the coefficient of objective_var in this constraint, and perform
+      // various checks.
+      bool is_present = false;
+      int64 objective_coeff;
+      for (int i = 0; i < num_terms; ++i) {
+        const int ref = ct.linear().vars(i);
+        const int64 coeff = ct.linear().coeffs(i);
+        if (PositiveRef(ref) == objective_var) {
+          CHECK(!is_present) << "Duplicate variables not supported.";
+          is_present = true;
+          objective_coeff = (ref == objective_var) ? coeff : -coeff;
+        } else {
+          // This is not possible since we only consider relevant constraints.
+          CHECK(!processed_vars.count(PositiveRef(ref)));
+        }
+      }
+      CHECK(is_present);
+
+      // We use the longest equality we can find.
+      //
+      // TODO(user): Deal with objective_coeff with a magnitude greater than
+      // 1? This will only be possible if we change the objective coeff type
+      // to double.
+      if (std::abs(objective_coeff) == 1 &&
+          num_terms > size_of_expanded_constraint) {
+        expanded_linear_index = ct_index;
+        size_of_expanded_constraint = num_terms;
+        objective_coeff_in_expanded_constraint = objective_coeff;
+      }
+    }
+
+    if (expanded_linear_index != -1) {
+      context->UpdateRuleStats("objective: expanded objective constraint.");
+
+      // Update the objective map. Note that the division is possible because
+      // currently we only expand with coeff with a magnitude of 1.
+      CHECK_EQ(std::abs(objective_coeff_in_expanded_constraint), 1);
+      const int64 factor =
+          objective_map[objective_var] / objective_coeff_in_expanded_constraint;
+
+      objective_map.erase(objective_var);
+      context->var_to_constraints[objective_var].erase(-1);
+
+      const ConstraintProto& ct =
+          context->working_model->constraints(expanded_linear_index);
+      const int num_terms = ct.linear().vars_size();
+      for (int i = 0; i < num_terms; ++i) {
+        const int ref = ct.linear().vars(i);
+        const int var = PositiveRef(ref);
+        if (var == objective_var) continue;
+
+        int64 coeff = -ct.linear().coeffs(i) * factor;
+        if (!RefIsPositive(ref)) coeff = -coeff;
+        if (!gtl::ContainsKey(objective_map, var)) {
+          context->var_to_constraints[var].insert(-1);
+        }
+        objective_map[var] += coeff;
+        if (objective_map[var] == 0.0) {
+          objective_map.erase(var);
+          context->var_to_constraints[var].erase(-1);
+        }
+      }
+      objective_offset_change += ct.linear().domain(0) * factor;
+
+      // If the objective variable wasn't used in other constraints and it can
+      // be reconstructed whatever the value of the other variables, we can
+      // remove the constraint.
+      //
+      // TODO(user): It should be possible to refactor the code so this is
+      // automatically done by the linear constraint singleton presolve rule.
+      if (context->var_to_constraints[objective_var].size() == 1) {
+        // Compute implied domain on objective_var.
+        Domain implied_domain = ReadDomainFromProto(ct.linear());
+        for (int i = 0; i < num_terms; ++i) {
+          const int ref = ct.linear().vars(i);
+          if (PositiveRef(ref) == objective_var) continue;
+          implied_domain = implied_domain.AdditionWith(
+              context->DomainOf(ref).ContinuousMultiplicationBy(
+                  -ct.linear().coeffs(i)));
+        }
+        implied_domain = implied_domain.InverseMultiplicationBy(
+            objective_coeff_in_expanded_constraint);
+
+        // Remove the constraint if the implied domain is included in the
+        // domain of the objective_var term.
+        //
+        // Note the special case for the first expansion where any domain
+        // restriction will be handled by the objective domain because we
+        // called EncodeObjectiveAsSingleVariable() above.
+        if (num_expansions == 0 ||
+            implied_domain.IsIncludedIn(context->DomainOf(objective_var))) {
+          context->UpdateRuleStats("objective: removed objective constraint.");
+          *(context->mapping_model->add_constraints()) = ct;
+          context->working_model->mutable_constraints(expanded_linear_index)
+              ->Clear();
+          context->UpdateConstraintVariableUsage(expanded_linear_index);
+        }
+      }
+      ++num_expansions;
+    }
+  }
+
+  // Re-write the objective.
+  CpObjectiveProto* const mutable_objective =
+      context->working_model->mutable_objective();
+  mutable_objective->clear_coeffs();
+  mutable_objective->clear_vars();
+  for (const auto& entry : objective_map) {
+    mutable_objective->add_vars(entry.first);
+    mutable_objective->add_coeffs(entry.second);
+  }
+  mutable_objective->set_offset(mutable_objective->offset() +
+                                objective_offset_change);
+  FillDomainInProto(
+      initial_objective_domain.AdditionWith(Domain(-objective_offset_change)),
+      mutable_objective);
+}
+
+void MergeNoOverlapConstraints(PresolveContext* context) {
+  const int num_constraints = context->working_model->constraints_size();
+
+  int old_num_no_overlaps = 0;
+  int old_num_intervals = 0;
+
+  // Extract the no-overlap constraints.
+  std::vector<int> disjunctive_index;
+  std::vector<std::vector<Literal>> cliques;
+  for (int c = 0; c < num_constraints; ++c) {
+    const ConstraintProto& ct = context->working_model->constraints(c);
+    if (ct.constraint_case() != ConstraintProto::ConstraintCase::kNoOverlap) {
+      continue;
+    }
+    std::vector<Literal> clique;
+    for (const int i : ct.no_overlap().intervals()) {
+      clique.push_back(Literal(BooleanVariable(i), true));
+    }
+    cliques.push_back(clique);
+    disjunctive_index.push_back(c);
+
+    old_num_no_overlaps++;
+    old_num_intervals += clique.size();
+  }
+
+  // We reuse the max-clique code from sat.
+  Model local_model;
+  auto* graph = local_model.GetOrCreate<BinaryImplicationGraph>();
+  graph->Resize(num_constraints);
+  for (const std::vector<Literal>& clique : cliques) {
+    graph->AddAtMostOne(clique);
+  }
+  CHECK(graph->DetectEquivalences());
+  graph->TransformIntoMaxCliques(&cliques);
+
+  // Replace each no-overlap with an extended version, or remove if empty.
+  int new_num_no_overlaps = 0;
+  int new_num_intervals = 0;
+  for (int i = 0; i < cliques.size(); ++i) {
+    const int ct_index = disjunctive_index[i];
+    ConstraintProto* ct = context->working_model->mutable_constraints(ct_index);
+    ct->Clear();
+    if (cliques[i].empty()) continue;
+    for (const Literal l : cliques[i]) {
+      CHECK(l.IsPositive());
+      ct->mutable_no_overlap()->add_intervals(l.Variable().value());
+    }
+    new_num_no_overlaps++;
+    new_num_intervals += cliques[i].size();
+  }
+  if (old_num_intervals != new_num_intervals ||
+      old_num_no_overlaps != new_num_no_overlaps) {
+    VLOG(1) << absl::StrCat("Merged ", old_num_no_overlaps, " no-overlaps (",
+                            old_num_intervals, " intervals) into ",
+                            new_num_no_overlaps, " no-overlaps (",
+                            new_num_intervals, " intervals).");
+    context->UpdateRuleStats("no_overlap: merged constraints");
+  }
 }
 
 }  // namespace.
@@ -2119,6 +2426,9 @@ void PresolveCpModel(bool log_info, CpModelProto* presolved_model,
       if (ct->constraint_case() != ConstraintProto::ConstraintCase::kLinear) {
         continue;
       }
+      if (gtl::ContainsKey(context.affine_constraints, ct)) {
+        continue;
+      }
       ExtractAtMostOneFromLinear(ct, &context);
     }
     for (int c = old_size; c < context.working_model->constraints_size(); ++c) {
@@ -2143,222 +2453,45 @@ void PresolveCpModel(bool log_info, CpModelProto* presolved_model,
     return;
   }
 
-  if (context.working_model->has_objective()) {
-    // This is because we called EncodeObjectiveAsSingleVariable(). Note that
-    // it allows us to update the proto objective domain too.
-    CHECK_EQ(context.working_model->objective().vars_size(), 1);
-    CHECK_EQ(context.working_model->objective().coeffs(0), 1);
-    FillDomainInProto(
-        context.DomainOf(context.working_model->objective().vars(0)),
-        context.working_model->mutable_objective());
+  MergeNoOverlapConstraints(&context);
 
-    // We use a general code even if we currently have only one term (see checks
-    // above).
-    std::map<int, int64> objective_map;
-    int64 objective_offset = 0.0;
-    for (int i = 0; i < context.working_model->objective().vars_size(); ++i) {
-      const int ref = context.working_model->objective().vars(i);
-      const int64 coeff = context.working_model->objective().coeffs(i);
-      objective_map[PositiveRef(ref)] = RefIsPositive(ref) ? coeff : -coeff;
+  // Remove all affine constraints (they will be re-added later if
+  // needed) in the presolved model.
+  for (int c = 0; c < presolved_model->constraints_size(); ++c) {
+    ConstraintProto* ct = presolved_model->mutable_constraints(c);
+    if (gtl::ContainsKey(context.affine_constraints, ct)) {
+      ct->Clear();
+      context.UpdateConstraintVariableUsage(c);
+      continue;
     }
 
-    // We currently never expand a variable more than once.
-    std::set<int> already_expanded;
-    for (int num_expansions = 0; true; ++num_expansions) {
-      // Find a not yet expanded var.
-      int objective_var = -1;
-      for (const auto& entry : objective_map) {
-        if (already_expanded.count(entry.first)) continue;
-        objective_var = entry.first;
+    // Make sure we filter out absent intervals.
+    //
+    // TODO(user): ideally we should "wake-up" any constraint that contains an
+    // absent interval in the main propagation loop above. But we currently
+    // don't maintain such list.
+    switch (ct->constraint_case()) {
+      case ConstraintProto::ConstraintCase::kNoOverlap:
+        if (PresolveNoOverlap(ct, &context)) {
+          context.UpdateConstraintVariableUsage(c);
+        }
         break;
-      }
-      if (objective_var == -1) break;
-      CHECK(RefIsPositive(objective_var));
-      already_expanded.insert(objective_var);
-
-      int expanded_linear_index = -1;
-      int64 objective_coeff_in_expanded_constraint;
-      int64 size_of_expanded_constraint = 0;
-      const auto& non_deterministic_list =
-          context.var_to_constraints[objective_var];
-      std::vector<int> constraints_with_objective(
-          non_deterministic_list.begin(), non_deterministic_list.end());
-      std::sort(constraints_with_objective.begin(),
-                constraints_with_objective.end());
-      for (const int ct_index : constraints_with_objective) {
-        if (ct_index == -1) continue;
-        const ConstraintProto& ct =
-            context.working_model->constraints(ct_index);
-
-        // Skip everything that is not a linear equality constraint.
-        if (!ct.enforcement_literal().empty()) continue;
-        if (ct.constraint_case() != ConstraintProto::ConstraintCase::kLinear) {
-          continue;
+      case ConstraintProto::ConstraintCase::kNoOverlap2D:
+        // TODO(user): Implement if we ever support optional intervals in
+        // this constraint. Currently we do not.
+        break;
+      case ConstraintProto::ConstraintCase::kCumulative:
+        if (PresolveCumulative(ct, &context)) {
+          context.UpdateConstraintVariableUsage(c);
         }
-        if (ct.linear().domain().size() != 2) continue;
-        if (ct.linear().domain(0) != ct.linear().domain(1)) continue;
-
-        // Find out if objective_var appear in this constraint.
-        bool skip = false;
-        bool is_present = false;
-        int64 objective_coeff;
-        const int num_terms = ct.linear().vars_size();
-        for (int i = 0; i < num_terms; ++i) {
-          const int ref = ct.linear().vars(i);
-          const int64 coeff = ct.linear().coeffs(i);
-
-          if (PositiveRef(ref) == objective_var) {
-            CHECK(!is_present) << "Duplicate variables not supported.";
-            is_present = true;
-            objective_coeff = (ref == objective_var) ? coeff : -coeff;
-          } else {
-            // Skip if it contains one already expanded term other than
-            // objective_var.
-            //
-            // TODO(user): Refine the expansion heuristic, not all expansions
-            // are good.
-            if (already_expanded.count(PositiveRef(ref))) {
-              skip = true;
-              break;
-            }
-          }
-        }
-        if (skip) continue;
-        CHECK(is_present);
-
-        // We use the longest equality we can find.
-        //
-        // TODO(user): Deal with objective_coeff with a magnitude greater than
-        // 1? This will only be possible if we change the objective coeff type
-        // to double.
-        if (std::abs(objective_coeff) == 1 &&
-            num_terms > size_of_expanded_constraint) {
-          expanded_linear_index = ct_index;
-          size_of_expanded_constraint = num_terms;
-          objective_coeff_in_expanded_constraint = objective_coeff;
-        }
-      }
-
-      if (expanded_linear_index != -1) {
-        context.UpdateRuleStats("objective: expanded objective constraint.");
-
-        // Update the objective map. Note that the division is possible because
-        // currently we only expand with coeff with a magnitude of 1.
-        CHECK_EQ(std::abs(objective_coeff_in_expanded_constraint), 1);
-        const int64 factor = objective_map[objective_var] /
-                             objective_coeff_in_expanded_constraint;
-
-        objective_map.erase(objective_var);
-        context.var_to_constraints[objective_var].erase(-1);
-
-        const ConstraintProto& ct =
-            context.working_model->constraints(expanded_linear_index);
-        const int num_terms = ct.linear().vars_size();
-        for (int i = 0; i < num_terms; ++i) {
-          const int ref = ct.linear().vars(i);
-          const int var = PositiveRef(ref);
-          if (var == objective_var) continue;
-
-          int64 coeff = -ct.linear().coeffs(i) * factor;
-          if (!RefIsPositive(ref)) coeff = -coeff;
-          if (!gtl::ContainsKey(objective_map, var)) {
-            context.var_to_constraints[var].insert(-1);
-          }
-          objective_map[var] += coeff;
-          if (objective_map[var] == 0.0) {
-            objective_map.erase(var);
-            context.var_to_constraints[var].erase(-1);
-          }
-        }
-        objective_offset += ct.linear().domain(0) * factor;
-
-        // If the objective variable wasn't used in other constraints and it can
-        // be reconstructed whatever the value of the other variables, we can
-        // remove the constraint.
-        //
-        // TODO(user): It should be possible to refactor the code so this is
-        // automatically done by the linear constraint singleton presolve rule.
-        if (context.var_to_constraints[objective_var].size() == 1) {
-          // Compute implied domain on objective_var.
-          Domain implied_domain = ReadDomainFromProto(ct.linear());
-          for (int i = 0; i < num_terms; ++i) {
-            const int ref = ct.linear().vars(i);
-            if (PositiveRef(ref) == objective_var) continue;
-            implied_domain = implied_domain.AdditionWith(
-                context.DomainOf(ref).ContinuousMultiplicationBy(
-                    -ct.linear().coeffs(i)));
-          }
-          implied_domain = implied_domain.InverseMultiplicationBy(
-              objective_coeff_in_expanded_constraint);
-
-          // Remove the constraint if the implied domain is included in the
-          // domain of the objective_var term.
-          //
-          // Note the special case for the first expansion where any domain
-          // restriction will be handled by the objective domain because we
-          // called EncodeObjectiveAsSingleVariable() above.
-          if (num_expansions == 0 ||
-              implied_domain.IsIncludedIn(context.DomainOf(objective_var))) {
-            context.UpdateRuleStats("objective: removed objective constraint.");
-            *(context.mapping_model->add_constraints()) = ct;
-            context.working_model->mutable_constraints(expanded_linear_index)
-                ->Clear();
-            context.UpdateConstraintVariableUsage(expanded_linear_index);
-          }
-        }
-      }
+        break;
+      default:
+        break;
     }
-
-    // Re-write the objective.
-    CpObjectiveProto* const mutable_objective =
-        context.working_model->mutable_objective();
-    mutable_objective->clear_coeffs();
-    mutable_objective->clear_vars();
-    for (const auto& entry : objective_map) {
-      mutable_objective->add_vars(entry.first);
-      mutable_objective->add_coeffs(entry.second);
-    }
-    mutable_objective->set_offset(mutable_objective->offset() +
-                                  objective_offset);
-    FillDomainInProto(ReadDomainFromProto(*mutable_objective)
-                          .AdditionWith(Domain(-objective_offset)),
-                      mutable_objective);
   }
 
-  // Remove all empty or affine constraints (they will be re-added later if
-  // needed) in the presolved model. Note that we need to remap the interval
-  // references.
-  std::vector<int> interval_mapping(presolved_model->constraints_size(), -1);
-  int new_num_constraints = 0;
-  const int old_num_constraints = presolved_model->constraints_size();
-  for (int i = 0; i < old_num_constraints; ++i) {
-    const auto type = presolved_model->constraints(i).constraint_case();
-    if (type == ConstraintProto::ConstraintCase::CONSTRAINT_NOT_SET) continue;
-
-    if (type == ConstraintProto::ConstraintCase::kInterval) {
-      interval_mapping[i] = new_num_constraints;
-    } else {
-      // TODO(user): for now we don't remove interval because they can be used
-      // in constraints.
-      ConstraintProto* ct = presolved_model->mutable_constraints(i);
-      if (gtl::ContainsKey(context.affine_constraints, ct)) {
-        ct->Clear();
-        context.UpdateConstraintVariableUsage(i);
-        continue;
-      }
-    }
-    presolved_model->mutable_constraints(new_num_constraints++)
-        ->Swap(presolved_model->mutable_constraints(i));
-  }
-  presolved_model->mutable_constraints()->DeleteSubrange(
-      new_num_constraints, old_num_constraints - new_num_constraints);
-  for (ConstraintProto& ct_ref : *presolved_model->mutable_constraints()) {
-    ApplyToAllIntervalIndices(
-        [&interval_mapping](int* ref) {
-          *ref = interval_mapping[*ref];
-          DCHECK_NE(-1, *ref);
-        },
-        &ct_ref);
+  if (context.working_model->has_objective()) {
+    ExpandObjective(&context);
   }
 
   // Add back the affine relations to the presolved model or to the mapping
@@ -2409,6 +2542,31 @@ void PresolveCpModel(bool log_info, CpModelProto* presolved_model,
     arg->add_coeffs(-r.coeff);
     arg->add_domain(r.offset);
     arg->add_domain(r.offset);
+  }
+
+  // Remove all empty constraints. Note that we need to remap the interval
+  // references.
+  std::vector<int> interval_mapping(presolved_model->constraints_size(), -1);
+  int new_num_constraints = 0;
+  const int old_num_constraints = presolved_model->constraints_size();
+  for (int i = 0; i < old_num_constraints; ++i) {
+    const auto type = presolved_model->constraints(i).constraint_case();
+    if (type == ConstraintProto::ConstraintCase::CONSTRAINT_NOT_SET) continue;
+    if (type == ConstraintProto::ConstraintCase::kInterval) {
+      interval_mapping[i] = new_num_constraints;
+    }
+    presolved_model->mutable_constraints(new_num_constraints++)
+        ->Swap(presolved_model->mutable_constraints(i));
+  }
+  presolved_model->mutable_constraints()->DeleteSubrange(
+      new_num_constraints, old_num_constraints - new_num_constraints);
+  for (ConstraintProto& ct_ref : *presolved_model->mutable_constraints()) {
+    ApplyToAllIntervalIndices(
+        [&interval_mapping](int* ref) {
+          *ref = interval_mapping[*ref];
+          CHECK_NE(-1, *ref);
+        },
+        &ct_ref);
   }
 
   // The strategy variable indices will be remapped in ApplyVariableMapping()

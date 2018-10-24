@@ -461,12 +461,13 @@ class LinearProgrammingConstraint : public PropagatorInterface,
 };
 
 // A class that stores which LP propagator is associated to each variable.
-// We need to give the hash_map a name so it can be used as a singleton
-// in our model.
+// We need to give the hash_map a name so it can be used as a singleton in our
+// model.
 //
 // Important: only positive variable do appear here.
 class LinearProgrammingDispatcher
-    : public std::unordered_map<IntegerVariable, LinearProgrammingConstraint*> {
+    : public absl::flat_hash_map<IntegerVariable,
+                                 LinearProgrammingConstraint*> {
  public:
   explicit LinearProgrammingDispatcher(Model* model) {}
 };

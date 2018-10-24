@@ -14,9 +14,9 @@
 #include "ortools/flatzinc/model.h"
 
 #include <set>
-#include <unordered_set>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
@@ -215,7 +215,7 @@ bool Domain::IntersectWithListOfIntegers(const std::vector<int64>& integers) {
   } else {
     // TODO(user): Investigate faster code for small arrays.
     std::sort(values.begin(), values.end());
-    std::unordered_set<int64> other_values(integers.begin(), integers.end());
+    absl::flat_hash_set<int64> other_values(integers.begin(), integers.end());
     std::vector<int64> new_values;
     new_values.reserve(std::min(values.size(), integers.size()));
     bool changed = false;
@@ -297,10 +297,10 @@ bool Domain::OverlapsIntList(const std::vector<int64>& vec) const {
     // TODO(user): Better algorithm, sort and compare increasingly.
     const std::vector<int64>& to_scan =
         values.size() <= vec.size() ? values : vec;
-    const std::unordered_set<int64> container =
+    const absl::flat_hash_set<int64> container =
         values.size() <= vec.size()
-            ? std::unordered_set<int64>(vec.begin(), vec.end())
-            : std::unordered_set<int64>(values.begin(), values.end());
+            ? absl::flat_hash_set<int64>(vec.begin(), vec.end())
+            : absl::flat_hash_set<int64>(values.begin(), values.end());
     for (int64 value : to_scan) {
       if (gtl::ContainsKey(container, value)) {
         return true;
@@ -982,7 +982,7 @@ void ModelStatistics::BuildStatistics() {
   for (Constraint* const ct : model_.constraints()) {
     if (ct != nullptr && ct->active) {
       constraints_per_type_[ct->type].push_back(ct);
-      std::unordered_set<const IntegerVariable*> marked;
+      absl::flat_hash_set<const IntegerVariable*> marked;
       for (const Argument& arg : ct->arguments) {
         for (IntegerVariable* const var : arg.variables) {
           marked.insert(var);

@@ -12,9 +12,9 @@
 // limitations under the License.
 
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
 #include "ortools/base/hash.h"
@@ -690,9 +690,9 @@ class ModelStatisticsVisitor : public ModelVisitor {
     extension_types_[extension_type]++;
   }
 
-  std::unordered_map<std::string, int> constraint_types_;
-  std::unordered_map<std::string, int> expression_types_;
-  std::unordered_map<std::string, int> extension_types_;
+  absl::flat_hash_map<std::string, int> constraint_types_;
+  absl::flat_hash_map<std::string, int> expression_types_;
+  absl::flat_hash_map<std::string, int> extension_types_;
   int num_constraints_;
   int num_variables_;
   int num_expressions_;
@@ -700,7 +700,7 @@ class ModelStatisticsVisitor : public ModelVisitor {
   int num_intervals_;
   int num_sequences_;
   int num_extensions_;
-  std::unordered_set<const BaseObject*> already_visited_;
+  absl::flat_hash_set<const BaseObject*> already_visited_;
 };
 
 // ---------- Variable Degree Visitor ---------
@@ -708,7 +708,7 @@ class ModelStatisticsVisitor : public ModelVisitor {
 class VariableDegreeVisitor : public ModelVisitor {
  public:
   explicit VariableDegreeVisitor(
-      std::unordered_map<const IntVar*, int>* const map)
+      absl::flat_hash_map<const IntVar*, int>* const map)
       : map_(map) {}
 
   ~VariableDegreeVisitor() override {}
@@ -800,7 +800,7 @@ class VariableDegreeVisitor : public ModelVisitor {
     object->Accept(this);
   }
 
-  std::unordered_map<const IntVar*, int>* const map_;
+  absl::flat_hash_map<const IntVar*, int>* const map_;
 };
 }  // namespace
 
@@ -813,7 +813,7 @@ ModelVisitor* Solver::MakeStatisticsModelVisitor() {
 }
 
 ModelVisitor* Solver::MakeVariableDegreeVisitor(
-    std::unordered_map<const IntVar*, int>* const map) {
+    absl::flat_hash_map<const IntVar*, int>* const map) {
   return RevAlloc(new VariableDegreeVisitor(map));
 }
 

@@ -19,10 +19,10 @@
 
 #include <deque>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 
 #include "absl/container/inlined_vector.h"
 #include "absl/types/span.h"
@@ -206,7 +206,7 @@ class LiteralWatchers : public SatPropagator {
     return gtl::ContainsKey(clauses_info_, clause);
   }
   int64 num_removable_clauses() const { return clauses_info_.size(); }
-  std::unordered_map<SatClause*, ClauseInfo>* mutable_clauses_info() {
+  absl::flat_hash_map<SatClause*, ClauseInfo>* mutable_clauses_info() {
     return &clauses_info_;
   }
 
@@ -292,7 +292,7 @@ class LiteralWatchers : public SatPropagator {
   int to_minimize_index_ = 0;
 
   // Only contains removable clause.
-  std::unordered_map<SatClause*, ClauseInfo> clauses_info_;
+  absl::flat_hash_map<SatClause*, ClauseInfo> clauses_info_;
 
   DratProofHandler* drat_proof_handler_ = nullptr;
 
@@ -332,7 +332,7 @@ class BinaryClauseManager {
   void ClearNewlyAdded() { newly_added_.clear(); }
 
  private:
-  std::unordered_set<std::pair<int, int>> set_;
+  absl::flat_hash_set<std::pair<int, int>> set_;
   std::vector<BinaryClause> newly_added_;
   DISALLOW_COPY_AND_ASSIGN(BinaryClauseManager);
 };
@@ -551,6 +551,10 @@ class BinaryImplicationGraph : public SatPropagator {
 
   // Temporary stack used by MinimizeClauseWithReachability().
   std::vector<Literal> dfs_stack_;
+
+  // Used to limit the work done by ComputeTransitiveReduction() and
+  // TransformIntoMaxCliques().
+  int64 work_done_in_mark_descendants_ = 0;
 
   // Filled by DetectEquivalences().
   bool is_dag_ = false;

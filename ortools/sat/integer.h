@@ -20,7 +20,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -666,7 +665,7 @@ class IntegerTrail : public SatPropagator {
   void AppendLiteralsReason(int trail_index,
                             std::vector<Literal>* output) const;
 
-  // Returns some debuging info.
+  // Returns some debugging info.
   std::string DebugString();
 
   // Information for each internal variable about its current bound.

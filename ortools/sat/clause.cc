@@ -768,12 +768,12 @@ bool BinaryImplicationGraph::DetectEquivalences() {
 
 bool BinaryImplicationGraph::ComputeTransitiveReduction() {
   if (!DetectEquivalences()) return false;
+  work_done_in_mark_descendants_ = 0;
 
   // For each node we do a graph traversal and only keep the literals
   // at maximum distance 1. This only works because we have a DAG when ignoring
   // the "redundant" literal marked by DetectEquivalences().
   const LiteralIndex size(implications_.size());
-  int64 work_done = 0;
   for (const LiteralIndex i : reverse_topological_order_) {
     CHECK(!is_redundant_[i]);
     auto& direct_implications = implications_[i];
@@ -784,7 +784,6 @@ bool BinaryImplicationGraph::ComputeTransitiveReduction() {
       if (is_marked_[root.Index()]) continue;
 
       MarkDescendants(root);
-      work_done += dfs_stack_.size();
 
       // We have a DAG, so root could only be marked first.
       is_marked_.Clear(root.Index());
@@ -805,14 +804,14 @@ bool BinaryImplicationGraph::ComputeTransitiveReduction() {
     num_implications_ -= diff;
 
     // Abort if the computation involved is too big.
-    if (work_done > 1e9) break;
+    if (work_done_in_mark_descendants_ > 1e8) break;
   }
 
   if (num_redundant_implications_ > 0) {
     VLOG(1) << "Transitive reduction removed " << num_redundant_implications_
             << " literals. " << num_implications_ << " implications left. "
             << implications_.size() << " literals."
-            << (work_done > 1e9 ? " Aborted." : "");
+            << (work_done_in_mark_descendants_ > 1e8 ? " Aborted." : "");
   }
   return true;
 }
@@ -851,6 +850,7 @@ struct VectorHash {
 void BinaryImplicationGraph::TransformIntoMaxCliques(
     std::vector<std::vector<Literal>>* at_most_ones) {
   CHECK(is_dag_);
+  work_done_in_mark_descendants_ = 0;
 
   int num_extended = 0;
   int num_removed = 0;
@@ -890,7 +890,10 @@ void BinaryImplicationGraph::TransformIntoMaxCliques(
       }
     }
 
-    clique = ExpandAtMostOne(clique);
+    // We only expand the clique as long as we didn't spend too much time.
+    if (work_done_in_mark_descendants_ < 1e8) {
+      clique = ExpandAtMostOne(clique);
+    }
     std::sort(clique.begin(), clique.end());
     if (max_cliques.count(clique)) {
       ++num_removed;
@@ -909,7 +912,8 @@ void BinaryImplicationGraph::TransformIntoMaxCliques(
 
   if (num_extended > 0 || num_removed > 0 || num_added > 0) {
     VLOG(1) << "Clique Extended: " << num_extended
-            << " Removed: " << num_removed << " Added: " << num_added;
+            << " Removed: " << num_removed << " Added: " << num_added
+            << (work_done_in_mark_descendants_ > 1e8 ? " (Aborted)" : "");
   }
 }
 
@@ -927,6 +931,7 @@ void BinaryImplicationGraph::MarkDescendants(Literal root) {
       }
     }
   }
+  work_done_in_mark_descendants_ += dfs_stack_.size();
 }
 
 std::vector<Literal> BinaryImplicationGraph::ExpandAtMostOne(

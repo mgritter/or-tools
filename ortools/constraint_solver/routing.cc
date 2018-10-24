@@ -22,11 +22,11 @@
 #include <memory>
 #include <numeric>
 #include <tuple>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 
 #include "absl/base/casts.h"
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
@@ -737,8 +737,8 @@ RoutingModel::~RoutingModel() {
   gtl::STLDeleteElements(&dimensions_);
 
   // State dependent transit callbacks.
-  std::unordered_set<RangeIntToIntFunction*> value_functions_delete;
-  std::unordered_set<RangeMinMaxIndexFunction*> index_functions_delete;
+  absl::flat_hash_set<RangeIntToIntFunction*> value_functions_delete;
+  absl::flat_hash_set<RangeMinMaxIndexFunction*> index_functions_delete;
   for (const auto& cache_line : state_dependent_transit_evaluators_cache_) {
     for (const auto& key_transit : *cache_line) {
       value_functions_delete.insert(key_transit.second.transit);
@@ -1603,7 +1603,7 @@ class RoutingModelInspector : public ModelVisitor {
   ~RoutingModelInspector() override {}
   void EndVisitModel(const std::string& solver_name) override {
     // Compact same vehicle component indices.
-    std::unordered_map<int, int> component_indices;
+    absl::flat_hash_map<int, int> component_indices;
     int component_index = 0;
     for (int node = 0; node < model_->Size(); ++node) {
       const int component =
@@ -1709,12 +1709,12 @@ class RoutingModelInspector : public ModelVisitor {
 
   RoutingModel* const model_;
   ConnectedComponents<int, int> same_vehicle_components_;
-  std::unordered_map<const IntExpr*, std::pair<RoutingDimension*, int>>
+  absl::flat_hash_map<const IntExpr*, std::pair<RoutingDimension*, int>>
       cumul_to_dim_indices_;
-  std::unordered_map<const IntExpr*, int> vehicle_var_to_indices_;
-  std::unordered_map<std::string, ExprInspector> expr_inspectors_;
-  std::unordered_map<std::string, ArrayInspector> array_inspectors_;
-  std::unordered_map<std::string, ConstraintInspector> constraint_inspectors_;
+  absl::flat_hash_map<const IntExpr*, int> vehicle_var_to_indices_;
+  absl::flat_hash_map<std::string, ExprInspector> expr_inspectors_;
+  absl::flat_hash_map<std::string, ArrayInspector> array_inspectors_;
+  absl::flat_hash_map<std::string, ConstraintInspector> constraint_inspectors_;
   const IntExpr* expr_ = nullptr;
   const IntExpr* left_ = nullptr;
   const IntExpr* right_ = nullptr;
@@ -2435,13 +2435,13 @@ class RouteConstructor {
   std::vector<IntVar*> nexts_;
   std::vector<const RoutingDimension*> dimensions_;  // Not owned.
   std::vector<std::vector<int64>> cumuls_;
-  std::vector<std::unordered_map<int, int64>> new_possible_cumuls_;
+  std::vector<absl::flat_hash_map<int, int64>> new_possible_cumuls_;
   std::vector<std::vector<int>> routes_;
   std::vector<int> in_route_;
-  std::unordered_set<int> deleted_routes_;
+  absl::flat_hash_set<int> deleted_routes_;
   std::vector<std::vector<int>> final_routes_;
   std::vector<Chain> chains_;
-  std::unordered_set<int> deleted_chains_;
+  absl::flat_hash_set<int> deleted_chains_;
   std::vector<Chain> final_chains_;
   std::vector<int> index_to_chain_index_;
   std::vector<int> index_to_vehicle_class_index_;
@@ -3155,12 +3155,12 @@ bool RoutingModel::RoutesToAssignment(
     return false;
   }
 
-  std::unordered_set<int> visited_indices;
+  absl::flat_hash_set<int> visited_indices;
   // Set value to NextVars based on the routes.
   for (int vehicle = 0; vehicle < num_routes; ++vehicle) {
     const std::vector<int64>& route = routes[vehicle];
     int from_index = Start(vehicle);
-    std::pair<std::unordered_set<int>::iterator, bool> insert_result =
+    std::pair<absl::flat_hash_set<int>::iterator, bool> insert_result =
         visited_indices.insert(from_index);
     if (!insert_result.second) {
       LOG(ERROR) << "Index " << from_index << " (start node for vehicle "
@@ -3220,7 +3220,7 @@ bool RoutingModel::RoutesToAssignment(
     const int start_index = Start(vehicle);
     // Even if close_routes is false, we still need to add the start index to
     // visited_indices so that deactivating other nodes works correctly.
-    std::pair<std::unordered_set<int>::iterator, bool> insert_result =
+    std::pair<absl::flat_hash_set<int>::iterator, bool> insert_result =
         visited_indices.insert(start_index);
     if (!insert_result.second) {
       LOG(ERROR) << "Index " << start_index << " is used multiple times";
@@ -3521,7 +3521,7 @@ void RoutingModel::AddTypeIncompatibility(int type1, int type2) {
   incompatible_types_per_type_index_[type2].insert(type1);
 }
 
-const std::unordered_set<int>& RoutingModel::GetTypeIncompatibilities(
+const absl::flat_hash_set<int>& RoutingModel::GetTypeIncompatibilities(
     int type) const {
   CHECK_GE(type, 0);
   if (type >= incompatible_types_per_type_index_.size()) {
@@ -3560,7 +3560,7 @@ std::string RoutingModel::DebugOutputAssignment(
     }
   }
   std::string output;
-  std::unordered_set<std::string> dimension_names;
+  absl::flat_hash_set<std::string> dimension_names;
   if (dimension_to_print.empty()) {
     const std::vector<std::string> all_dimension_names = GetAllDimensionNames();
     dimension_names.insert(all_dimension_names.begin(),
@@ -4681,7 +4681,7 @@ void ComputeTransitClasses(const std::vector<int>& evaluator_indices,
   CHECK(vehicle_to_class != nullptr);
   class_evaluators->clear();
   vehicle_to_class->resize(evaluator_indices.size(), -1);
-  std::unordered_map<int, int64> evaluator_to_class;
+  absl::flat_hash_map<int, int64> evaluator_to_class;
   for (int i = 0; i < evaluator_indices.size(); ++i) {
     const int evaluator_index = evaluator_indices[i];
     int evaluator_class = -1;

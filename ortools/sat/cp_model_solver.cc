@@ -20,8 +20,6 @@
 #include <memory>
 #include <set>
 #include <type_traits>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 
 #include "absl/strings/str_format.h"
@@ -33,6 +31,8 @@
 #include "absl/synchronization/notification.h"
 #include "google/protobuf/text_format.h"
 #endif  // __PORTABLE_PLATFORM__
+#include "absl/container/flat_hash_map.h"
+#include "absl/container/flat_hash_set.h"
 #include "absl/memory/memory.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
@@ -296,7 +296,7 @@ class ModelWithMapping {
 
   // Set of constraints to ignore because they were already dealt with by
   // ExtractEncoding().
-  std::unordered_set<const ConstraintProto*> ct_to_ignore_;
+  absl::flat_hash_set<const ConstraintProto*> ct_to_ignore_;
 };
 
 template <typename Values>
@@ -458,7 +458,7 @@ void ModelWithMapping::ExtractEncoding(const CpModelProto& model_proto) {
     if (encoding.empty()) continue;
     num_constraints += encoding.size();
 
-    std::unordered_set<int64> values;
+    absl::flat_hash_set<int64> values;
     for (int j = 0; j + 1 < encoding.size(); j++) {
       if ((encoding[j].value != encoding[j + 1].value) ||
           (encoding[j].literal != encoding[j + 1].literal.Negated()) ||
@@ -808,8 +808,8 @@ class FullEncodingFixedPointComputer {
   std::vector<int> variables_to_propagate_;
   std::vector<std::vector<const ConstraintProto*>> variable_watchers_;
 
-  std::unordered_set<const ConstraintProto*> constraint_is_finished_;
-  std::unordered_set<const ConstraintProto*> constraint_is_registered_;
+  absl::flat_hash_set<const ConstraintProto*> constraint_is_finished_;
+  absl::flat_hash_set<const ConstraintProto*> constraint_is_registered_;
 };
 
 bool FullEncodingFixedPointComputer::PropagateElement(
@@ -1232,7 +1232,7 @@ void LoadElementConstraintAC(const ConstraintProto& ct, ModelWithMapping* m) {
   if (m->Get(IsFixed(target))) {
     return LoadElementConstraintBounds(ct, m);
   }
-  std::unordered_map<IntegerValue, Literal> target_map;
+  absl::flat_hash_map<IntegerValue, Literal> target_map;
   const auto target_encoding = m->Add(FullyEncodeVariable(target));
   for (const auto literal_value : target_encoding) {
     target_map[literal_value.value] = literal_value.literal;
@@ -1240,7 +1240,7 @@ void LoadElementConstraintAC(const ConstraintProto& ct, ModelWithMapping* m) {
 
   // For i \in index and value in vars[i], make (index == i /\ vars[i] == value)
   // literals and store them by value in vectors.
-  std::unordered_map<IntegerValue, std::vector<Literal>> value_to_literals;
+  absl::flat_hash_map<IntegerValue, std::vector<Literal>> value_to_literals;
   const auto index_encoding = m->Add(FullyEncodeVariable(index));
   for (const auto literal_value : index_encoding) {
     const int i = literal_value.value.value();
@@ -1500,12 +1500,22 @@ std::string Summarize(const std::string& input) {
 // =============================================================================
 
 std::string CpModelStats(const CpModelProto& model_proto) {
-  std::map<ConstraintProto::ConstraintCase, int> num_constraints_by_type;
-  std::map<ConstraintProto::ConstraintCase, int> num_reif_constraints_by_type;
+  std::map<std::string, int> num_constraints_by_name;
+  std::map<std::string, int> num_reif_constraints_by_name;
   for (const ConstraintProto& ct : model_proto.constraints()) {
-    num_constraints_by_type[ct.constraint_case()]++;
+    std::string name = ConstraintCaseName(ct.constraint_case());
+
+    // We split the linear constraints into 3 buckets has it gives more insight
+    // on the type of problem we are facing.
+    if (ct.constraint_case() == ConstraintProto::ConstraintCase::kLinear) {
+      if (ct.linear().vars_size() == 1) name += "1";
+      if (ct.linear().vars_size() == 2) name += "2";
+      if (ct.linear().vars_size() > 2) name += "N";
+    }
+
+    num_constraints_by_name[name]++;
     if (!ct.enforcement_literal().empty()) {
-      num_reif_constraints_by_type[ct.constraint_case()]++;
+      num_reif_constraints_by_name[name]++;
     }
   }
 
@@ -1578,11 +1588,11 @@ std::string CpModelStats(const CpModelProto& model_proto) {
   }
 
   std::vector<std::string> constraints;
-  constraints.reserve(num_constraints_by_type.size());
-  for (const auto entry : num_constraints_by_type) {
+  constraints.reserve(num_constraints_by_name.size());
+  for (const auto entry : num_constraints_by_name) {
     constraints.push_back(
-        absl::StrCat("#", ConstraintCaseName(entry.first), ": ", entry.second,
-                     " (", num_reif_constraints_by_type[entry.first],
+        absl::StrCat("#", entry.first, ": ", entry.second, " (",
+                     num_reif_constraints_by_name[entry.first],
                      " with enforcement literal)"));
   }
   std::sort(constraints.begin(), constraints.end());
@@ -1828,8 +1838,7 @@ IntegerVariable GetOrCreateVariableGreaterOrEqualToSumOf(
 void TryToLinearizeConstraint(const CpModelProto& model_proto,
                               const ConstraintProto& ct, ModelWithMapping* m,
                               int linearization_level,
-                              std::vector<LinearConstraint>* linear_constraints,
-                              std::vector<std::vector<Literal>>* at_most_ones) {
+                              LinearRelaxation* relaxation) {
   if (ct.constraint_case() == ConstraintProto::ConstraintCase::kBoolOr) {
     if (linearization_level < 2) return;
     LinearConstraintBuilder lc(m->model(), IntegerValue(1), kMaxIntegerValue);
@@ -1840,7 +1849,7 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
     for (const int ref : ct.bool_or().literals()) {
       CHECK(lc.AddLiteralTerm(m->Literal(ref), IntegerValue(1)));
     }
-    linear_constraints->push_back(lc.Build());
+    relaxation->linear_constraints.push_back(lc.Build());
   } else if (ct.constraint_case() ==
              ConstraintProto::ConstraintCase::kBoolAnd) {
     if (linearization_level < 2) return;
@@ -1848,7 +1857,8 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
     if (ct.enforcement_literal().size() == 1) {
       const Literal enforcement = m->Literal(ct.enforcement_literal(0));
       for (const int ref : ct.bool_and().literals()) {
-        at_most_ones->push_back({enforcement, m->Literal(ref).Negated()});
+        relaxation->at_most_ones.push_back(
+            {enforcement, m->Literal(ref).Negated()});
       }
       return;
     }
@@ -1860,7 +1870,7 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
                                 IntegerValue(1)));
       }
       CHECK(lc.AddLiteralTerm(m->Literal(ref), IntegerValue(1)));
-      linear_constraints->push_back(lc.Build());
+      relaxation->linear_constraints.push_back(lc.Build());
     }
   } else if (ct.constraint_case() ==
              ConstraintProto::ConstraintCase::kAtMostOne) {
@@ -1869,7 +1879,7 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
     for (const int ref : ct.at_most_one().literals()) {
       at_most_one.push_back(m->Literal(ref));
     }
-    at_most_ones->push_back(at_most_one);
+    relaxation->at_most_ones.push_back(at_most_one);
   } else if (ct.constraint_case() == ConstraintProto::ConstraintCase::kIntMax) {
     if (HasEnforcementLiteral(ct)) return;
     const int target = ct.int_max().target();
@@ -1880,7 +1890,7 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
       LinearConstraintBuilder lc(m->model(), kMinIntegerValue, IntegerValue(0));
       lc.AddTerm(m->Integer(var), IntegerValue(1));
       lc.AddTerm(m->Integer(target), IntegerValue(-1));
-      linear_constraints->push_back(lc.Build());
+      relaxation->linear_constraints.push_back(lc.Build());
     }
   } else if (ct.constraint_case() == ConstraintProto::ConstraintCase::kIntMin) {
     if (HasEnforcementLiteral(ct)) return;
@@ -1890,7 +1900,7 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
       LinearConstraintBuilder lc(m->model(), kMinIntegerValue, IntegerValue(0));
       lc.AddTerm(m->Integer(target), IntegerValue(1));
       lc.AddTerm(m->Integer(var), IntegerValue(-1));
-      linear_constraints->push_back(lc.Build());
+      relaxation->linear_constraints.push_back(lc.Build());
     }
   } else if (ct.constraint_case() ==
              ConstraintProto::ConstraintCase::kIntProd) {
@@ -1906,7 +1916,7 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
       LinearConstraintBuilder lc(m->model(), kMinIntegerValue, IntegerValue(0));
       lc.AddTerm(m->Integer(ct.int_prod().vars(0)), IntegerValue(1));
       lc.AddTerm(m->Integer(target), IntegerValue(-1));
-      linear_constraints->push_back(lc.Build());
+      relaxation->linear_constraints.push_back(lc.Build());
     }
   } else if (ct.constraint_case() == ConstraintProto::ConstraintCase::kLinear) {
     // Note that we ignore the holes in the domain.
@@ -1928,7 +1938,7 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
         const int64 coeff = ct.linear().coeffs(i);
         lc.AddTerm(m->Integer(ref), IntegerValue(coeff));
       }
-      linear_constraints->push_back(lc.Build());
+      relaxation->linear_constraints.push_back(lc.Build());
       return;
     }
 
@@ -1965,7 +1975,7 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
         lc.AddTerm(m->Integer(ref), IntegerValue(ct.linear().coeffs(i)));
       }
       CHECK(lc.AddLiteralTerm(m->Literal(e), implied_lb - min));
-      linear_constraints->push_back(lc.Build());
+      relaxation->linear_constraints.push_back(lc.Build());
     }
     if (max != kint64max) {
       // (e => terms <= max) <=> terms <= implied_ub + e * (max - implied_ub)
@@ -1975,7 +1985,7 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
         lc.AddTerm(m->Integer(ref), IntegerValue(ct.linear().coeffs(i)));
       }
       CHECK(lc.AddLiteralTerm(m->Literal(e), implied_ub - max));
-      linear_constraints->push_back(lc.Build());
+      relaxation->linear_constraints.push_back(lc.Build());
     }
   } else if (ct.constraint_case() ==
              ConstraintProto::ConstraintCase::kCircuit) {
@@ -2010,8 +2020,8 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
           }
 
           // We separate the two constraints.
-          at_most_ones->push_back(exactly_one);
-          linear_constraints->push_back(at_least_one_lc.Build());
+          relaxation->at_most_ones.push_back(exactly_one);
+          relaxation->linear_constraints.push_back(at_least_one_lc.Build());
         }
       }
     }
@@ -2037,13 +2047,13 @@ void TryToLinearizeConstraint(const CpModelProto& model_proto,
                                       integer_trail->LowerBound(var)));
     }
 
-    linear_constraints->push_back(constraint.Build());
+    relaxation->linear_constraints.push_back(constraint.Build());
   }
 }
 
 void TryToAddCutGenerators(const CpModelProto& model_proto,
                            const ConstraintProto& ct, ModelWithMapping* m,
-                           std::vector<CutGenerator>* cut_generators) {
+                           LinearRelaxation* relaxation) {
   if (ct.constraint_case() == ConstraintProto::ConstraintCase::kCircuit) {
     std::vector<int> tails(ct.circuit().tails().begin(),
                            ct.circuit().tails().end());
@@ -2058,8 +2068,9 @@ void TryToAddCutGenerators(const CpModelProto& model_proto,
       vars.push_back(m->Add(NewIntegerVariableFromLiteral(literal)));
     }
 
-    cut_generators->push_back(CreateStronglyConnectedGraphCutGenerator(
-        num_nodes, tails, heads, vars));
+    relaxation->cut_generators.push_back(
+        CreateStronglyConnectedGraphCutGenerator(num_nodes, tails, heads,
+                                                 vars));
   }
   if (ct.constraint_case() == ConstraintProto::ConstraintCase::kRoutes) {
     std::vector<int> tails;
@@ -2079,12 +2090,13 @@ void TryToAddCutGenerators(const CpModelProto& model_proto,
       num_nodes = std::max(num_nodes, 1 + ct.routes().heads(i));
     }
     if (ct.routes().demands().empty() || ct.routes().capacity() == 0) {
-      cut_generators->push_back(CreateStronglyConnectedGraphCutGenerator(
-          num_nodes, tails, heads, vars));
+      relaxation->cut_generators.push_back(
+          CreateStronglyConnectedGraphCutGenerator(num_nodes, tails, heads,
+                                                   vars));
     } else {
       const std::vector<int64> demands(ct.routes().demands().begin(),
                                        ct.routes().demands().end());
-      cut_generators->push_back(CreateCVRPCutGenerator(
+      relaxation->cut_generators.push_back(CreateCVRPCutGenerator(
           num_nodes, tails, heads, vars, demands, ct.routes().capacity()));
     }
   }
@@ -2095,11 +2107,10 @@ void TryToAddCutGenerators(const CpModelProto& model_proto,
 // Adds one LinearProgrammingConstraint per connected component of the model.
 IntegerVariable AddLPConstraints(const CpModelProto& model_proto,
                                  int linearization_level, ModelWithMapping* m) {
+  LinearRelaxation relaxation;
+
   // Linearize the constraints.
   IndexReferences refs;
-  std::vector<LinearConstraint> linear_constraints;
-  std::vector<std::vector<Literal>> at_most_ones;
-  std::vector<CutGenerator> cut_generators;
   auto* encoder = m->GetOrCreate<IntegerEncoder>();
   for (const auto& ct : model_proto.constraints()) {
     // We linearize fully/partially encoded variable differently, so we just
@@ -2134,18 +2145,18 @@ IntegerVariable AddLPConstraints(const CpModelProto& model_proto,
     if (!ok) continue;
 
     TryToLinearizeConstraint(model_proto, ct, m, linearization_level,
-                             &linear_constraints, &at_most_ones);
+                             &relaxation);
 
     // For now these are only useful on problem with circuit. They can help
     // a lot on complex problems, but they also slow down simple ones.
     if (linearization_level > 1) {
-      TryToAddCutGenerators(model_proto, ct, m, &cut_generators);
+      TryToAddCutGenerators(model_proto, ct, m, &relaxation);
     }
   }
 
   // Linearize the encoding of variable that are fully encoded in the proto.
   int num_full_encoding_relaxations = 0;
-  const int old_size = linear_constraints.size();
+  int num_partial_encoding_relaxations = 0;
   for (int i = 0; i < model_proto.variables_size(); ++i) {
     if (m->IsBoolean(i)) continue;
 
@@ -2155,27 +2166,30 @@ IntegerVariable AddLPConstraints(const CpModelProto& model_proto,
     // TODO(user): This different encoding for the partial variable might be
     // better (less LP constraints), but we do need more investigation to
     // decide.
-    if (/* DISABLES CODE */ false) {
-      AppendPartialEncodingRelaxation(var, *(m->model()), &linear_constraints);
+    if (/* DISABLES CODE */ (false)) {
+      AppendPartialEncodingRelaxation(var, *(m->model()), &relaxation);
       continue;
     }
 
     if (encoder->VariableIsFullyEncoded(var)) {
-      if (AppendFullEncodingRelaxation(var, *(m->model()),
-                                       &linear_constraints)) {
+      if (AppendFullEncodingRelaxation(var, *(m->model()), &relaxation)) {
         ++num_full_encoding_relaxations;
       }
     } else {
+      const int old = relaxation.linear_constraints.size();
       AppendPartialGreaterThanEncodingRelaxation(var, *(m->model()),
-                                                 &linear_constraints);
+                                                 &relaxation);
+      if (relaxation.linear_constraints.size() > old) {
+        ++num_partial_encoding_relaxations;
+      }
     }
   }
 
   // Linearize the at most one constraints. Note that we transform them
   // into maximum "at most one" first and we removes redundant ones.
   m->GetOrCreate<BinaryImplicationGraph>()->TransformIntoMaxCliques(
-      &at_most_ones);
-  for (const std::vector<Literal>& at_most_one : at_most_ones) {
+      &relaxation.at_most_ones);
+  for (const std::vector<Literal>& at_most_one : relaxation.at_most_ones) {
     if (at_most_one.empty()) continue;
     LinearConstraintBuilder lc(m->model(), kMinIntegerValue, IntegerValue(1));
     for (const Literal literal : at_most_one) {
@@ -2184,24 +2198,26 @@ IntegerVariable AddLPConstraints(const CpModelProto& model_proto,
       const bool unused ABSL_ATTRIBUTE_UNUSED =
           lc.AddLiteralTerm(literal, IntegerValue(1));
     }
-    linear_constraints.push_back(lc.Build());
+    relaxation.linear_constraints.push_back(lc.Build());
   }
 
   // Remove size one LP constraints, they are not useful.
-  const int num_extra_constraints = linear_constraints.size() - old_size;
   {
     int new_size = 0;
-    for (int i = 0; i < linear_constraints.size(); ++i) {
-      if (linear_constraints[i].vars.size() <= 1) continue;
-      std::swap(linear_constraints[new_size++], linear_constraints[i]);
+    for (int i = 0; i < relaxation.linear_constraints.size(); ++i) {
+      if (relaxation.linear_constraints[i].vars.size() <= 1) continue;
+      std::swap(relaxation.linear_constraints[new_size++],
+                relaxation.linear_constraints[i]);
     }
-    linear_constraints.resize(new_size);
+    relaxation.linear_constraints.resize(new_size);
   }
 
   VLOG(2) << "num_full_encoding_relaxations: " << num_full_encoding_relaxations;
-  VLOG(2) << "num_integer_encoding_constraints: " << num_extra_constraints;
-  VLOG(2) << linear_constraints.size() << " constraints in the LP relaxation.";
-  VLOG(2) << cut_generators.size() << " cuts generators.";
+  VLOG(2) << "num_partial_encoding_relaxations: "
+          << num_partial_encoding_relaxations;
+  VLOG(2) << relaxation.linear_constraints.size()
+          << " constraints in the LP relaxation.";
+  VLOG(2) << relaxation.cut_generators.size() << " cuts generators.";
 
   // The bipartite graph of LP constraints might be disconnected:
   // make a partition of the variables into connected components.
@@ -2209,8 +2225,8 @@ IntegerVariable AddLPConstraints(const CpModelProto& model_proto,
   // variable nodes by [num_lp_constraints..num_lp_constraints+num_variables).
   //
   // TODO(user): look into biconnected components.
-  const int num_lp_constraints = linear_constraints.size();
-  const int num_lp_cut_generators = cut_generators.size();
+  const int num_lp_constraints = relaxation.linear_constraints.size();
+  const int num_lp_cut_generators = relaxation.cut_generators.size();
   const int num_integer_variables =
       m->GetOrCreate<IntegerTrail>()->NumIntegerVariables().value();
   ConnectedComponents<int, int> components;
@@ -2225,12 +2241,12 @@ IntegerVariable AddLPConstraints(const CpModelProto& model_proto,
     return num_lp_constraints + num_lp_cut_generators + var.value();
   };
   for (int i = 0; i < num_lp_constraints; i++) {
-    for (const IntegerVariable var : linear_constraints[i].vars) {
+    for (const IntegerVariable var : relaxation.linear_constraints[i].vars) {
       components.AddArc(get_constraint_index(i), get_var_index(var));
     }
   }
   for (int i = 0; i < num_lp_cut_generators; ++i) {
-    for (const IntegerVariable var : cut_generators[i].vars) {
+    for (const IntegerVariable var : relaxation.cut_generators[i].vars) {
       components.AddArc(get_cut_generator_index(i), get_var_index(var));
     }
   }
@@ -2271,11 +2287,13 @@ IntegerVariable AddLPConstraints(const CpModelProto& model_proto,
 
     // Load the constraint.
     LinearProgrammingConstraint* lp = representative_to_lp_constraint[id];
-    const auto lp_constraint = lp->CreateNewConstraint(
-        linear_constraints[i].lb, linear_constraints[i].ub);
-    for (int j = 0; j < linear_constraints[i].vars.size(); ++j) {
-      lp->SetCoefficient(lp_constraint, linear_constraints[i].vars[j],
-                         linear_constraints[i].coeffs[j]);
+    const auto lp_constraint =
+        lp->CreateNewConstraint(relaxation.linear_constraints[i].lb,
+                                relaxation.linear_constraints[i].ub);
+    for (int j = 0; j < relaxation.linear_constraints[i].vars.size(); ++j) {
+      lp->SetCoefficient(lp_constraint,
+                         relaxation.linear_constraints[i].vars[j],
+                         relaxation.linear_constraints[i].coeffs[j]);
     }
   }
 
@@ -2289,7 +2307,7 @@ IntegerVariable AddLPConstraints(const CpModelProto& model_proto,
       lp_constraints.push_back(lp);
     }
     LinearProgrammingConstraint* lp = representative_to_lp_constraint[id];
-    lp->AddCutGenerator(std::move(cut_generators[i]));
+    lp->AddCutGenerator(std::move(relaxation.cut_generators[i]));
   }
 
   // Add the objective.

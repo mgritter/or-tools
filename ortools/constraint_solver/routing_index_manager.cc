@@ -14,8 +14,8 @@
 #include "ortools/constraint_solver/routing_index_manager.h"
 
 #include <memory>
-#include <unordered_set>
 
+#include "absl/container/flat_hash_set.h"
 #include "ortools/base/logging.h"
 #include "ortools/base/map_util.h"
 
@@ -55,9 +55,9 @@ void RoutingIndexManager::Initialize(
   num_nodes_ = num_nodes;
   num_vehicles_ = num_vehicles;
   CHECK_EQ(num_vehicles_, starts_ends.size());
-  std::unordered_set<NodeIndex> starts;
-  std::unordered_set<NodeIndex> ends;
-  std::unordered_set<NodeIndex> unique_depots;
+  absl::flat_hash_set<NodeIndex> starts;
+  absl::flat_hash_set<NodeIndex> ends;
+  absl::flat_hash_set<NodeIndex> unique_depots;
   for (const std::pair<NodeIndex, NodeIndex>& start_end : starts_ends) {
     const NodeIndex start = start_end.first;
     const NodeIndex end = start_end.second;
@@ -85,7 +85,7 @@ void RoutingIndexManager::Initialize(
       ++index;
     }
   }
-  std::unordered_set<NodeIndex> seen_starts;
+  absl::flat_hash_set<NodeIndex> seen_starts;
   for (int i = 0; i < num_vehicles_; ++i) {
     const NodeIndex start = starts_ends[i].first;
     if (!gtl::ContainsKey(seen_starts, start)) {

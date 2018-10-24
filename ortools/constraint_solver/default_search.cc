@@ -16,16 +16,15 @@
 #include <limits>
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <utility>
 #include <vector>
+#include "absl/container/flat_hash_set.h"
 
+#include "absl/strings/str_format.h"
 #include "ortools/base/commandlineflags.h"
 #include "ortools/base/integral_types.h"
 #include "ortools/base/logging.h"
 #include "ortools/base/macros.h"
-
-#include "absl/strings/str_format.h"
 #include "ortools/base/random.h"
 #include "ortools/base/stl_util.h"
 #include "ortools/constraint_solver/constraint_solver.h"
@@ -642,7 +641,7 @@ class ImpactRecorder : public SearchMonitor {
   int current_var_;
   int64 current_value_;
   FindVar find_var_;
-  std::unordered_map<const IntVar*, int> var_map_;
+  absl::flat_hash_map<const IntVar*, int> var_map_;
   bool init_done_;
 
   DISALLOW_COPY_AND_ASSIGN(ImpactRecorder);

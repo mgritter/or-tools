@@ -15,10 +15,10 @@
 #include <deque>
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_format.h"
 #include "absl/strings/str_join.h"
@@ -1444,7 +1444,7 @@ class PathTransitPrecedenceConstraint : public Constraint {
   PathTransitPrecedenceConstraint(
       Solver* solver, std::vector<IntVar*> nexts, std::vector<IntVar*> transits,
       const std::vector<std::pair<int, int>>& precedences,
-      std::unordered_map<int, PrecedenceType> precedence_types)
+      absl::flat_hash_map<int, PrecedenceType> precedence_types)
       : Constraint(solver),
         nexts_(std::move(nexts)),
         transits_(std::move(transits)),
@@ -1586,11 +1586,11 @@ class PathTransitPrecedenceConstraint : public Constraint {
   const std::vector<IntVar*> transits_;
   std::vector<std::vector<int>> predecessors_;
   std::vector<std::vector<int>> successors_;
-  const std::unordered_map<int, PrecedenceType> precedence_types_;
+  const absl::flat_hash_map<int, PrecedenceType> precedence_types_;
   RevArray<int> starts_;
   RevArray<int> ends_;
-  std::unordered_set<int> forbidden_;
-  std::unordered_set<int> marked_;
+  absl::flat_hash_set<int> forbidden_;
+  absl::flat_hash_set<int> marked_;
   std::deque<int> pushed_;
   std::vector<int64> transit_cumuls_;
 };
@@ -1598,7 +1598,7 @@ class PathTransitPrecedenceConstraint : public Constraint {
 Constraint* MakePathTransitTypedPrecedenceConstraint(
     Solver* solver, std::vector<IntVar*> nexts, std::vector<IntVar*> transits,
     const std::vector<std::pair<int, int>>& precedences,
-    std::unordered_map<int, PathTransitPrecedenceConstraint::PrecedenceType>
+    absl::flat_hash_map<int, PathTransitPrecedenceConstraint::PrecedenceType>
         precedence_types) {
   if (precedences.empty()) {
     return solver->MakeTrueConstraint();
@@ -1621,7 +1621,7 @@ Constraint* Solver::MakePathPrecedenceConstraint(
     const std::vector<std::pair<int, int>>& precedences,
     const std::vector<int>& lifo_path_starts,
     const std::vector<int>& fifo_path_starts) {
-  std::unordered_map<int, PathTransitPrecedenceConstraint::PrecedenceType>
+  absl::flat_hash_map<int, PathTransitPrecedenceConstraint::PrecedenceType>
       precedence_types;
   for (int start : lifo_path_starts) {
     precedence_types[start] = PathTransitPrecedenceConstraint::LIFO;

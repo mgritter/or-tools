@@ -161,12 +161,12 @@
 #include <memory>
 #include <queue>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/container/flat_hash_set.h"
+#include "absl/hash/hash.h"
 #include "ortools/base/adjustable_priority_queue-inl.h"
 #include "ortools/base/adjustable_priority_queue.h"
 #include "ortools/base/commandlineflags.h"
@@ -649,7 +649,7 @@ class RoutingModel {
   int GetVisitType(int64 index) const;
   void AddTypeIncompatibility(int type1, int type2);
   // Returns visit types incompatible to a given type.
-  const std::unordered_set<int>& GetTypeIncompatibilities(int type) const;
+  const absl::flat_hash_set<int>& GetTypeIncompatibilities(int type) const;
   int GetNumberOfVisitTypes() const { return num_visit_types_; }
   // Get the "unperformed" penalty of a node. This is only well defined if the
   // node is only part of a single Disjunction involving only itself, and that
@@ -1304,7 +1304,7 @@ class RoutingModel {
   std::vector<IntVar*> is_bound_to_end_;
   RevSwitch is_bound_to_end_ct_added_;
   // Dimensions
-  std::unordered_map<std::string, DimensionIndex> dimension_name_to_index_;
+  absl::flat_hash_map<std::string, DimensionIndex> dimension_name_to_index_;
   gtl::ITIVector<DimensionIndex, RoutingDimension*> dimensions_;
   std::string primary_constrained_dimension_;
   // Costs
@@ -1356,11 +1356,11 @@ class RoutingModel {
   // Variable index to visit type index.
   std::vector<int> index_to_visit_type_;
   // clang-format off
-  std::vector<std::unordered_set<int> > incompatible_types_per_type_index_;
+  std::vector<absl::flat_hash_set<int> > incompatible_types_per_type_index_;
   // clang-format on
   // Empty set used in GetTypeIncompatibilities() when the given type has no
   // incompatibilities.
-  const std::unordered_set<int> empty_incompatibilities_;
+  const absl::flat_hash_set<int> empty_incompatibilities_;
   int num_visit_types_;
   // Two indices are equivalent if they correspond to the same node (as given to
   // the constructors taking a RoutingIndexManager).
@@ -1410,8 +1410,8 @@ class RoutingModel {
   SearchLimit* lns_limit_ = nullptr;
 
   typedef std::pair<int64, int64> CacheKey;
-  typedef std::unordered_map<CacheKey, int64> TransitCallbackCache;
-  typedef std::unordered_map<CacheKey, StateDependentTransit>
+  typedef absl::flat_hash_map<CacheKey, int64> TransitCallbackCache;
+  typedef absl::flat_hash_map<CacheKey, StateDependentTransit>
       StateDependentTransitCallbackCache;
 
   std::vector<TransitCallback1> unary_transit_evaluators_;
@@ -2093,8 +2093,8 @@ class GlobalCheapestInsertionFilteredDecisionBuilder
  private:
   class PairEntry;
   class NodeEntry;
-  typedef std::unordered_set<PairEntry*> PairEntries;
-  typedef std::unordered_set<NodeEntry*> NodeEntries;
+  typedef absl::flat_hash_set<PairEntry*> PairEntries;
+  typedef absl::flat_hash_set<NodeEntry*> NodeEntries;
 
   // Inserts all non-inserted pickup and delivery pairs. Maintains a priority
   // queue of possible pair insertions, which is incrementally updated when a
