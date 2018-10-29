@@ -158,13 +158,21 @@ OR_TOOLS_LIBS = $(LIB_DIR)/$(LIB_PREFIX)ortools$L
 CVRPTW_LIBS = $(LIB_DIR)/$(LIB_PREFIX)cvrptw_lib$L
 DIMACS_LIBS = $(LIB_DIR)/$(LIB_PREFIX)dimacs$L
 FAP_LIBS = $(LIB_DIR)/$(LIB_PREFIX)fap$L
-CLR_DLL_NAME ?= Google.OrTools
 
 .PHONY: all
 all: detect cc java dotnet test
 
 .PHONY: detect
 detect: detect_port detect_cc detect_java detect_dotnet
+	@echo SOURCE = $(SOURCE)
+	@echo SOURCE_PATH = $(SOURCE_PATH)
+	@echo SOURCE_NAME = $(SOURCE_NAME)
+	@echo SOURCE_SUFFIX = $(SOURCE_SUFFIX)
+ifeq ($(SYSTEM),win)
+	@echo off & echo(
+else
+	@echo
+endif
 
 .PHONY: test
 test: test_cc test_java test_dotnet
@@ -185,6 +193,25 @@ ifeq ($(SYSTEM),win)
 	@echo off & echo(
 else
 	@echo
+endif
+
+##############
+##  SOURCE  ##
+##############
+# Check SOURCE argument
+SOURCE_SUFFIX = $(suffix $(SOURCE))
+# will contain “/any/path/foo.cc” on unix and “\\any\\path\\foo.cc” on windows
+SOURCE_PATH = $(subst /,$S,$(SOURCE))
+SOURCE_NAME= $(basename $(notdir $(SOURCE)))
+ifeq ($(SOURCE),) # Those rules will be used if SOURCE is empty
+.PHONY: build run
+build run:
+	$(error no source file provided, the "$@" target must be used like so: \
+ make $@ SOURCE=relative/path/to/filename.extension)
+else
+ifeq (,$(wildcard $(SOURCE)))
+$(error File "$(SOURCE)" does not exist !)
+endif
 endif
 
 ###########
@@ -259,21 +286,29 @@ test_cc: detect_cc
 	$(MAKE) rcc_nurses_cp
 	$(MAKE) rcc_job_shop_cp
 
-# C++ generic running command
-ifeq ($(EX),)
-ccc rcc:
-	@echo No C++ file was provided, the $@ target must be used like so: \
-	make $@ EX=examples/cpp/example.cc
-	exit 2
-else # ifeq ($(EX),)
-EX_NAME = $(basename $(notdir $(EX)))
+##################
+##  C++ SOURCE  ##
+##################
+ifeq ($(SOURCE_SUFFIX),.cc) # Those rules will be used if SOURCE contain a .cc file
+$(OBJ_DIR)/$(SOURCE_NAME).$O: $(SOURCE) | $(OBJ_DIR)
+	$(CCC) $(CFLAGS) \
+ -c $(SOURCE_PATH) \
+ $(OBJ_OUT)$(OBJ_DIR)$S$(SOURCE_NAME).$O
 
-ccc: $(BIN_DIR)/$(EX_NAME)$E
+$(BIN_DIR)/$(SOURCE_NAME)$E: $(OBJ_DIR)/$(SOURCE_NAME).$O | $(BIN_DIR)
+	$(CCC) $(CFLAGS) \
+ $(OBJ_DIR)$S$(SOURCE_NAME).$O \
+ $(OR_TOOLS_LNK) $(OR_TOOLS_LDFLAGS) \
+ $(EXE_OUT)$(BIN_DIR)$S$(SOURCE_NAME)$E
 
-rcc: $(BIN_DIR)/$(EX_NAME)$E
-	@echo running $<
-	$(BIN_DIR)$S$(EX_NAME)$E $(ARGS)
-endif # ifeq ($(EX),)
+.PHONY: build # Build a C++ program.
+build: $(BIN_DIR)/$(SOURCE_NAME)$E
+
+.PHONY: run # Run a C++ program.
+run: build
+	$(BIN_DIR)$S$(SOURCE_NAME)$E $(ARGS)
+endif # ifeq ($(SOURCE_SUFFIX),.cc)
+
 endif # ifndef CXX_BIN
 
 $(OBJ_DIR):
@@ -414,24 +449,31 @@ test_java: detect_java
 	$(MAKE) rjava_Vrp
 	$(MAKE) rjava_Knapsack
 
-# Java generic compilation command.
-.PHONY: cjava rjava
-ifeq ($(EX),)
-rjava cjava:
-	@echo No Java file was provided, the $@ target must be used like so: \
-	make $@ EX=examples/java/example.java
-	exit 2
-else # ifeq ($(EX),)
-EX_NAME = $(basename $(notdir $(EX)))
+###################
+##  Java SOURCE  ##
+###################
+ifeq ($(SOURCE_SUFFIX),.java) # Those rules will be used if SOURCE contain a .java file
+$(CLASS_DIR)/$(SOURCE_NAME): $(SOURCE) | $(CLASS_DIR)
+	-$(DELREC) $(CLASS_DIR)$S$(SOURCE_NAME)
+	-$(MKDIR_P) $(CLASS_DIR)$S$(SOURCE_NAME)
+	"$(JAVAC_BIN)" -d $(CLASS_DIR)$S$(SOURCE_NAME) \
+ -cp $(LIB_DIR)$Scom.google.ortools.jar$(CPSEP)$(LIB_DIR)$Sprotobuf.jar \
+ $(SOURCE_PATH)
 
-cjava: $(CLASS_DIR)/$(EX_NAME)
+$(LIB_DIR)/$(SOURCE_NAME)$J: $(CLASS_DIR)/$(SOURCE_NAME) | $(LIB_DIR)
+	-$(DEL) $(LIB_DIR)$S$(SOURCE_NAME)$J
+	"$(JAR_BIN)" cvf $(LIB_DIR)$S$(SOURCE_NAME)$J -C $(CLASS_DIR)$S$(SOURCE_NAME) .
 
-rjava: $(LIB_DIR)/$(EX_NAME)$J
-	@echo running $<
+.PHONY: build # Build a Java program.
+build: $(LIB_DIR)/$(SOURCE_NAME)$J
+
+.PHONY: run # Run a Java program.
+run: build
 	"$(JAVA_BIN)" -Xss2048k $(JAVAFLAGS) \
- -cp $(LIB_DIR)$S$(EX_NAME)$J$(CPSEP)$(LIB_DIR)$Scom.google.ortools$J$(CPSEP)$(LIB_DIR)$Sprotobuf$J \
- $(EX_NAME) $(ARGS)
-endif # ifeq ($(EX),)
+ -cp $(LIB_DIR)$S$(SOURCE_NAME)$J$(CPSEP)$(LIB_DIR)$Scom.google.ortools.jar$(CPSEP)$(LIB_DIR)$Sprotobuf.jar \
+ $(SOURCE_NAME) $(ARGS)
+endif # ifeq ($(SOURCE_SUFFIX),.java)
+
 endif # ifndef HAS_JAVA
 
 $(CLASS_DIR):
@@ -620,21 +662,41 @@ test_dotnet: detect_dotnet
 	$(MAKE) rdotnet_assignment
 	$(MAKE) rdotnet_nurses_sat
 
-# .NET generic compilation command.
-ifeq ($(EX),)
-cdotnet rdotnet:
-	@echo No CSharp file was provided, the $@ target must be used like so: \
-	make $@ EX=example/dotnet/example.cs
-	exit 2
-else # ifeq ($(EX),)
-EX_NAME = $(basename $(notdir $(EX)))
+###################
+##  .NET SOURCE  ##
+###################
+# .Net C#
+ifeq ($(SOURCE_SUFFIX),.cs) # Those rules will be used if SOURCE contain a .cs file
+ifeq (,$(wildcard $(SOURCE)proj))
+$(error File "$(SOURCE)proj" does not exist !)
+endif
 
-cdotnet: $(BIN_DIR)/$(EX_NAME)$D
+.PHONY: build # Build a .Net C# program.
+build: $(SOURCE) $(SOURCE)proj
+	"$(DOTNET_BIN)" build $(SOURCE_PATH)proj
 
-rdotnet: $(BIN_DIR)/$(EX_NAME)$D
-	@echo running $<
-	"$(DOTNET_BIN)" $(BIN_DIR)$S$(EX_NAME)$D
-endif # ifeq ($(EX),)
+.PHONY: run # Run a .Net C# program.
+run: build
+	"$(DOTNET_BIN)" --no-build \
+ --project $(SOURCE_PATH)proj -- $(ARGS)
+endif # ifeq ($(SOURCE_SUFFIX),.cs)
+
+# .Net F#
+ifeq ($(SOURCE_SUFFIX),.fs) # Those rules will be used if SOURCE contain a .cs file
+ifeq (,$(wildcard $(SOURCE)proj))
+$(error File "$(SOURCE)proj" does not exist !)
+endif
+
+.PHONY: build # Build a .Net F# program.
+build: $(SOURCE) $(SOURCE)proj
+	"$(DOTNET_BIN)" build $(SOURCE_PATH)proj
+
+.PHONY: run # Run a .Net F# program.
+run: build
+	"$(DOTNET_BIN)" --no-build \
+ --project $(SOURCE_PATH)proj -- $(ARGS)
+endif # ifeq ($(SOURCE_SUFFIX),.fs)
+
 endif # ifndef DOTNET_BIN
 
 $(BIN_DIR)/%$D: \
@@ -664,7 +726,6 @@ rdotnet_%: \
 .PHONY: detect_dotnet
 detect_dotnet:
 	@echo DOTNET_BIN = $(DOTNET_BIN)
-	@echo CLR_DLL_NAME = $(CLR_DLL_NAME)
 ifeq ($(SYSTEM),win)
 	@echo off & echo(
 else
