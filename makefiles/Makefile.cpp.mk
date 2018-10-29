@@ -399,48 +399,51 @@ run: build
 	$(BIN_DIR)$S$(SOURCE_NAME)$E $(ARGS)
 endif
 
-############################
-##  CPP Examples/Samples  ##
-############################
+##################################
+##  CPP Tests/Examples/Samples  ##
+##################################
+$(OBJ_DIR)/%.$O: $(TEST_DIR)/%.cc $(OR_TOOLS_LIBS) | $(OBJ_DIR)
+	$(CCC) $(CFLAGS) -c $(TEST_PATH)$S$*.cc $(OBJ_OUT)$(OBJ_DIR)$S$*.$O
+
+$(OBJ_DIR)/%.$O: $(CC_EX_DIR)/%.cc $(OR_TOOLS_LIBS) | $(OBJ_DIR)
+	$(CCC) $(CFLAGS) -c $(CC_EX_PATH)$S$*.cc $(OBJ_OUT)$(OBJ_DIR)$S$*.$O
+
+$(OBJ_DIR)/%.$O: ortools/sat/samples/%.cc $(OR_TOOLS_LIBS) | $(OBJ_DIR)
+	$(CCC) $(CFLAGS) -c ortools$Ssat$Ssamples$S$*.cc $(OBJ_OUT)$(OBJ_DIR)$S$*.$O
+
 $(BIN_DIR)/%$E: $(OBJ_DIR)/%.$O $(OR_TOOLS_LIBS) | $(BIN_DIR)
 	$(CCC) $(CFLAGS) $(OBJ_DIR)$S$*.$O $(OR_TOOLS_LNK) $(OR_TOOLS_LDFLAGS) $(EXE_OUT)$(BIN_DIR)$S$*$E
 
+rcc_%: $(BIN_DIR)/%$E FORCE
+	$(BIN_DIR)$S$*$E $(ARGS)
+
 .PHONY: check_cc_examples
-check_cc_examples: cc
-	$(MAKE) rcc_linear_programming
-	$(MAKE) rcc_stigler_diet
-	$(MAKE) rcc_constraint_programming_cp
-	$(MAKE) rcc_rabbits_pheasants_cp
-	$(MAKE) rcc_integer_programming
-	$(MAKE) rcc_tsp
-	$(MAKE) rcc_vrp
-	$(MAKE) rcc_knapsack
-	$(MAKE) rcc_max_flow
-	$(MAKE) rcc_min_cost_flow
-	$(MAKE) rcc_nurses_cp
-	$(MAKE) rcc_job_shop_cp
+check_cc_examples: \
+ rcc_linear_programming \
+ rcc_stigler_diet \
+ rcc_constraint_programming_cp \
+ rcc_rabbits_pheasants_cp \
+ rcc_integer_programming \
+ rcc_tsp \
+ rcc_vrp \
+ rcc_knapsack \
+ rcc_max_flow \
+ rcc_min_cost_flow \
+ rcc_nurses_cp \
+ rcc_job_shop_cp ;
 
 .PHONY: test_cc_tests # Build and Run all C++ tests (located in examples/tests)
-test_cc_tests: cc
-	$(MAKE) rcc_ac4r_table_test
-	$(MAKE) rcc_boolean_test
-	$(MAKE) rcc_bug_fz1
-	$(MAKE) rcc_cpp11_test
-	$(MAKE) rcc_forbidden_intervals_test
-	$(MAKE) rcc_gcc_test
+test_cc_tests: \
+ rcc_ac4r_table_test \
+ rcc_boolean_test \
+ rcc_bug_fz1 \
+ rcc_cpp11_test \
+ rcc_forbidden_intervals_test \
+ rcc_gcc_test \
+ rcc_issue57 \
+ rcc_min_max_test \
+ rcc_visitor_test
 #	$(MAKE) rcc_issue173 # error: too long
-	$(MAKE) rcc_issue57
-	$(MAKE) rcc_min_max_test
-	$(MAKE) rcc_visitor_test
-
-$(OBJ_DIR)/%.$O: $(TEST_DIR)/%.cc \
- $(BASE_DEPS) $(PORT_DEPS) $(UTIL_DEPS) \
- $(DATA_DEPS) $(LP_DATA_DEPS) \
- $(LP_DEPS) $(GLOP_DEPS) $(BOP_DEPS) \
- $(CP_DEPS) $(SAT_DEPS) \
- $(GRAPH_DEPS) $(ALGORITHMS_DEPS) \
- | $(OBJ_DIR)
-	$(CCC) $(CFLAGS) -c $(TEST_PATH)$S$*.cc $(OBJ_OUT)$(OBJ_DIR)$S$*.$O
 
 .PHONY: test_cc_examples # Build and Run all C++ Examples (located in examples/cpp)
 test_cc_examples: cc
@@ -490,51 +493,30 @@ test_cc_examples: cc
 	$(MAKE) rcc_strawberry_fields_with_column_generation
 	$(MAKE) rcc_weighted_tardiness_sat
 
-$(OBJ_DIR)/%.$O: $(CC_EX_DIR)/%.cc \
- $(BASE_DEPS) $(PORT_DEPS) $(UTIL_DEPS) \
- $(DATA_DEPS) $(LP_DATA_DEPS) \
- $(LP_DEPS) $(GLOP_DEPS) $(BOP_DEPS) \
- $(CP_DEPS) $(SAT_DEPS) \
- $(GRAPH_DEPS) $(ALGORITHMS_DEPS) \
- | $(OBJ_DIR)
-	$(CCC) $(CFLAGS) -c $(CC_EX_PATH)$S$*.cc $(OBJ_OUT)$(OBJ_DIR)$S$*.$O
-
 
 .PHONY: test_cc_samples # Build and Run all C++ Samples (located in ortools/*/samples)
-test_cc_samples: cc
-	$(MAKE) rcc_binpacking_problem
-	$(MAKE) rcc_bool_or_sample
-	$(MAKE) rcc_channeling_sample
-	$(MAKE) rcc_code_sample
-	$(MAKE) rcc_interval_sample
-	$(MAKE) rcc_literal_sample
-	$(MAKE) rcc_no_overlap_sample
-	$(MAKE) rcc_optional_interval_sample
-	$(MAKE) rcc_rabbits_and_pheasants
-	$(MAKE) rcc_ranking_sample
-	$(MAKE) rcc_reified_sample
-	$(MAKE) rcc_simple_solve
-	$(MAKE) rcc_solve_all_solutions
-	$(MAKE) rcc_solve_with_intermediate_solutions
-	$(MAKE) rcc_solve_with_time_limit
-	$(MAKE) rcc_stop_after_n_solutions
-
-$(OBJ_DIR)/%.$O: ortools/sat/samples/%.cc \
- $(BASE_DEPS) $(PORT_DEPS) $(UTIL_DEPS) \
- $(DATA_DEPS) $(LP_DATA_DEPS) \
- $(LP_DEPS) $(GLOP_DEPS) $(BOP_DEPS) \
- $(CP_DEPS) $(SAT_DEPS) \
- $(GRAPH_DEPS) $(ALGORITHMS_DEPS) \
- | $(OBJ_DIR)
-	$(CCC) $(CFLAGS) -c ortools$Ssat$Ssamples$S$*.cc $(OBJ_OUT)$(OBJ_DIR)$S$*.$O
-
-rcc_%: $(BIN_DIR)/%$E
-	$(BIN_DIR)$S$*$E $(ARGS)
+test_cc_samples: \
+ rcc_binpacking_problem \
+ rcc_bool_or_sample \
+ rcc_channeling_sample \
+ rcc_code_sample \
+ rcc_interval_sample \
+ rcc_literal_sample \
+ rcc_no_overlap_sample \
+ rcc_optional_interval_sample \
+ rcc_rabbits_and_pheasants \
+ rcc_ranking_sample \
+ rcc_reified_sample \
+ rcc_simple_solve \
+ rcc_solve_all_solutions \
+ rcc_solve_with_intermediate_solutions \
+ rcc_solve_with_time_limit \
+ rcc_stop_after_n_solutions
 
 .PHONY: test_fz_examples # Build and Run few Flatzinc Samples (located in examples/flatzinc)
-test_fz_examples: fz
-	$(MAKE) rfz_golomb
-	$(MAKE) rfz_alpha
+test_fz_examples: \
+ rfz_golomb \
+ rfz_alpha
 
 rfz_%: fz $(FZ_EX_DIR)/%.fzn
 	$(BIN_DIR)$Sfz$E $(FZ_EX_PATH)$S$*.fzn
@@ -542,6 +524,18 @@ rfz_%: fz $(FZ_EX_DIR)/%.fzn
 ################
 ##  Cleaning  ##
 ################
+CC_SAMPLES :=  $(wildcard ortools/sat/samples/*.cc)
+CC_SAMPLES :=  $(notdir $(CC_SAMPLES))
+CC_SAMPLES := $(addsuffix $E, $(addprefix $(BIN_DIR)$S, $(basename $(CC_SAMPLES))))
+
+CC_EXAMPLES :=  $(wildcard $(CC_EX_DIR)/*.cc)
+CC_EXAMPLES :=  $(notdir $(CC_EXAMPLES))
+CC_EXAMPLES := $(addsuffix $E, $(addprefix $(BIN_DIR)$S, $(basename $(CC_EXAMPLES))))
+
+CC_TESTS :=  $(wildcard $(TEST_DIR)/*.cc)
+CC_TESTS :=  $(notdir $(CC_TESTS))
+CC_TESTS := $(addsuffix $E, $(addprefix $(BIN_DIR)$S, $(basename $(CC_TESTS))))
+
 .PHONY: clean_cc # Clean C++ output from previous build.
 clean_cc:
 	-$(DEL) $(LIB_DIR)$S$(LIB_PREFIX)cvrptw_lib.$L
@@ -567,7 +561,9 @@ clean_cc:
 	-$(DEL) $(BIN_DIR)$Sfz$E
 	-$(DEL) $(BIN_DIR)$Sparser_main$E
 	-$(DEL) $(BIN_DIR)$Ssat_runner$E
-	-$(DEL) $(addsuffix $E, $(addprefix $(BIN_DIR)$S, $(CC_SAMPLES) $(CC_EXAMPLES) $(CC_TESTS)))
+	-$(DEL) $(CC_SAMPLES)
+	-$(DEL) $(CC_EXAMPLES)
+	-$(DEL) $(CC_TESTS)
 	-$(DEL) $(GEN_PATH)$Sortools$Sbop$S*.pb.*
 	-$(DEL) $(GEN_PATH)$Sortools$Sconstraint_solver$S*.pb.*
 	-$(DEL) $(GEN_PATH)$Sortools$Sdata$S*.pb.*

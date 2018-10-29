@@ -132,3 +132,6 @@ else
 endif
 
 print-%  : ; @echo $* = $($*)
+
+.PHONY: FORCE
+FORCE:
