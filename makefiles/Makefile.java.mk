@@ -260,6 +260,31 @@ $(JAVA_OR_TOOLS_LIBS): \
  $(GEN_PATH)$Scom$Sgoogle$Sortools$Slinearsolver$S*.java
 	"$(JAR_BIN)" cvf $(LIB_DIR)$Scom.google.ortools.jar -C $(CLASS_DIR) com$Sgoogle$Sortools$S
 
+###################
+##  Java SOURCE  ##
+###################
+ifeq ($(SOURCE_SUFFIX),.java) # Those rules will be used if SOURCE contain a .java file
+$(CLASS_DIR)/$(SOURCE_NAME): $(SOURCE) $(JAVA_OR_TOOLS_LIBS) | $(CLASS_DIR)
+	-$(DELREC) $(CLASS_DIR)$S$(SOURCE_NAME)
+	-$(MKDIR_P) $(CLASS_DIR)$S$(SOURCE_NAME)
+	"$(JAVAC_BIN)" -d $(CLASS_DIR)$S$(SOURCE_NAME) \
+ -cp $(LIB_DIR)$Scom.google.ortools.jar$(CPSEP)$(LIB_DIR)$Sprotobuf.jar \
+ $(SOURCE_PATH)
+
+$(LIB_DIR)/$(SOURCE_NAME)$J: $(CLASS_DIR)/$(SOURCE_NAME) | $(LIB_DIR)
+	-$(DEL) $(LIB_DIR)$S$(SOURCE_NAME)$J
+	"$(JAR_BIN)" cvf $(LIB_DIR)$S$(SOURCE_NAME)$J -C $(CLASS_DIR)$S$(SOURCE_NAME) .
+
+.PHONY: build # Build a Java program.
+build: $(LIB_DIR)/$(SOURCE_NAME)$J
+
+.PHONY: run # Run a Java program.
+run: build
+	"$(JAVA_BIN)" -Xss2048k $(JAVAFLAGS) \
+ -cp $(LIB_DIR)$S$(SOURCE_NAME)$J$(CPSEP)$(LIB_DIR)$Scom.google.ortools.jar$(CPSEP)$(LIB_DIR)$Sprotobuf.jar \
+ $(SOURCE_NAME) $(ARGS)
+endif
+
 #############################
 ##  Java Examples/Samples  ##
 #############################
@@ -370,21 +395,6 @@ rjava_%: $(LIB_DIR)/%$J
 	"$(JAVA_BIN)" -Xss2048k $(JAVAFLAGS) \
  -cp $(LIB_DIR)$S$*.jar$(CPSEP)$(LIB_DIR)$Scom.google.ortools.jar$(CPSEP)$(LIB_DIR)$Sprotobuf.jar \
  $* $(ARGS)
-
-.PHONY: rjava cjava
-ifeq ($(EX),) # Those rules will be used if EX variable is not set
-rjava cjava:
-	@echo No java file was provided, the $@ target must be used like so: \
- make $@ EX=examples/java/example.java
-else # This generic rule will be used if EX variable is set
-EX_NAME = $(basename $(notdir $(EX)))
-
-cjava: $(CLASS_DIR)/$(EX_NAME)
-
-rjava: $(LIB_DIR)/$(EX_NAME)$J
-	@echo running $<
-	$(MAKE) rjava_$(EX_NAME)
-endif # ifeq ($(EX),)
 
 ################
 ##  Cleaning  ##

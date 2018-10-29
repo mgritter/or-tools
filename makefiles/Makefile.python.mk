@@ -452,6 +452,18 @@ else
 	cp $(PYDATA_LIBS) $(GEN_PATH)/ortools/data
 endif
 
+#######################
+##  Python SOURCE  ##
+#######################
+ifeq ($(SOURCE_SUFFIX),.py) # Those rules will be used if SOURCE contains a .py file
+.PHONY: build # Build a Python program.
+build: $(SOURCE) $(PYLP_LIBS) $(PYCP_LIBS) $(PYGRAPH_LIBS) $(PYALGORITHMS_LIBS) $(PYSAT_LIBS) $(PYDATA_LIBS) ;
+
+.PHONY: run # Run a Python program.
+run: build
+	$(SET_PYTHONPATH) "$(PYTHON_EXECUTABLE)" $(SOURCE_PATH) $(ARGS)
+endif
+
 ###############################
 ##  Python Examples/Samples  ##
 ###############################
@@ -709,23 +721,6 @@ rpy_%: \
  $(PYSAT_LIBS) \
  $(PYDATA_LIBS)
 	$(SET_PYTHONPATH) "$(PYTHON_EXECUTABLE)" ortools$Ssat$Ssamples$S$*.py $(ARGS)
-
-#######################
-##  Python Examples  ##
-#######################
-ifeq ($(EX),) # Those rules will be used if EX variable is not set
-.PHONY: rpy
-rpy:
-	@echo No python file was provided, the $@ target must be used like so: \
- make $@ EX=examples/python/example.py
-else # This generic rule will be used if EX variable is set
-
-.PHONY: rpy
-rpy: $(EX) \
- $(PYLP_LIBS) $(PYCP_LIBS) $(PYGRAPH_LIBS) $(PYALGORITHMS_LIBS) $(PYSAT_LIBS) $(PYDATA_LIBS)
-	@echo running $<
-	$(SET_PYTHONPATH) "$(PYTHON_EXECUTABLE)" $(EX) $(ARGS)
-endif # ifeq ($(EX),)
 
 ################
 ##  Cleaning  ##

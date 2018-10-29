@@ -376,9 +376,35 @@ $(OBJ_DIR)/sat_runner.$O: \
  $(SAT_DEPS) | $(OBJ_DIR)
 	$(CCC) $(CFLAGS) -c $(CC_EX_PATH)$Ssat_runner.cc $(OBJ_OUT)$(OBJ_DIR)$Ssat_runner.$O
 
+##################
+##  C++ SOURCE  ##
+##################
+ifeq ($(SOURCE_SUFFIX),.cc) # Those rules will be used if SOURCE contain a .cc file
+$(OBJ_DIR)/$(SOURCE_NAME).$O: $(SOURCE) $(OR_TOOLS_LIBS) | $(OBJ_DIR)
+	$(CCC) $(CFLAGS) \
+ -c $(SOURCE_PATH) \
+ $(OBJ_OUT)$(OBJ_DIR)$S$(SOURCE_NAME).$O
+
+$(BIN_DIR)/$(SOURCE_NAME)$E: $(OBJ_DIR)/$(SOURCE_NAME).$O $(OR_TOOLS_LIBS) | $(BIN_DIR)
+	$(CCC) $(CFLAGS) \
+ $(OBJ_DIR)$S$(SOURCE_NAME).$O \
+ $(OR_TOOLS_LNK) $(OR_TOOLS_LDFLAGS) \
+ $(EXE_OUT)$(BIN_DIR)$S$(SOURCE_NAME)$E
+
+.PHONY: build # Build a C++ program.
+build: $(BIN_DIR)/$(SOURCE_NAME)$E
+
+.PHONY: run # Run a C++ program.
+run: build
+	$(BIN_DIR)$S$(SOURCE_NAME)$E $(ARGS)
+endif
+
 ############################
 ##  CPP Examples/Samples  ##
 ############################
+$(BIN_DIR)/%$E: $(OBJ_DIR)/%.$O $(OR_TOOLS_LIBS) | $(BIN_DIR)
+	$(CCC) $(CFLAGS) $(OBJ_DIR)$S$*.$O $(OR_TOOLS_LNK) $(OR_TOOLS_LDFLAGS) $(EXE_OUT)$(BIN_DIR)$S$*$E
+
 .PHONY: check_cc_examples
 check_cc_examples: cc
 	$(MAKE) rcc_linear_programming
@@ -502,9 +528,6 @@ $(OBJ_DIR)/%.$O: ortools/sat/samples/%.cc \
  | $(OBJ_DIR)
 	$(CCC) $(CFLAGS) -c ortools$Ssat$Ssamples$S$*.cc $(OBJ_OUT)$(OBJ_DIR)$S$*.$O
 
-$(BIN_DIR)/%$E: $(OR_TOOLS_LIBS) $(OBJ_DIR)/%.$O | $(BIN_DIR)
-	$(CCC) $(CFLAGS) $(OBJ_DIR)$S$*.$O $(OR_TOOLS_LNK) $(OR_TOOLS_LDFLAGS) $(EXE_OUT)$(BIN_DIR)$S$*$E
-
 rcc_%: $(BIN_DIR)/%$E
 	$(BIN_DIR)$S$*$E $(ARGS)
 
@@ -515,25 +538,6 @@ test_fz_examples: fz
 
 rfz_%: fz $(FZ_EX_DIR)/%.fzn
 	$(BIN_DIR)$Sfz$E $(FZ_EX_PATH)$S$*.fzn
-####################
-##  C++ Examples  ##
-####################
-ifeq ($(EX),) # Those rules will be used if EX variable is not set
-.PHONY: rcc ccc
-rcc ccc:
-	@echo No C++ file was provided, the $@ target must be used like so: \
- make $@ EX=examples/cpp/example.cc
-else # This generic rule will be used if EX variable is set
-EX_NAME = $(basename $(notdir $(EX)))
-
-.PHONY: ccc
-ccc: $(BIN_DIR)/$(EX_NAME)$E
-
-.PHONY: rcc
-rcc: $(BIN_DIR)/$(EX_NAME)$E
-	@echo running $<
-	$(BIN_DIR)$S$(EX_NAME)$E $(ARGS)
-endif # ifeq ($(EX),)
 
 ################
 ##  Cleaning  ##

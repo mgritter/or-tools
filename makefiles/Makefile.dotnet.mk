@@ -399,6 +399,41 @@ test_dotnet_fsharp: $(DOTNET_ORTOOLS_FSHARP_NUPKG) \
 	"$(DOTNET_BIN)" build ortools$Sdotnet$S$(OR_TOOLS_FSHARP_TESTS_ASSEMBLY_NAME)
 	"$(DOTNET_BIN)" test ortools$Sdotnet$S$(OR_TOOLS_FSHARP_TESTS_ASSEMBLY_NAME)
 
+###################
+##  .NET SOURCE  ##
+###################
+# .Net C#
+ifeq ($(SOURCE_SUFFIX),.cs) # Those rules will be used if SOURCE contain a .cs file
+ifeq (,$(wildcard $(SOURCE)proj))
+$(error File "$(SOURCE)proj" does not exist !)
+endif
+
+.PHONY: build # Build a .Net C# program.
+build: $(SOURCE) $(SOURCE)proj $(DOTNET_ORTOOLS_NUPKG)
+	"$(DOTNET_BIN)" build $(SOURCE_PATH)proj
+
+.PHONY: run # Run a .Net C# program.
+run: build
+	"$(DOTNET_BIN)" --no-build \
+ --project $(SOURCE_PATH)proj -- $(ARGS)
+endif
+
+# .Net F#
+ifeq ($(SOURCE_SUFFIX),.fs) # Those rules will be used if SOURCE contain a .cs file
+ifeq (,$(wildcard $(SOURCE)proj))
+$(error File "$(SOURCE)proj" does not exist !)
+endif
+
+.PHONY: build # Build a .Net F# program.
+build: $(SOURCE) $(SOURCE)proj $(DOTNET_ORTOOLS_FSHARP_NUPKG)
+	"$(DOTNET_BIN)" build $(SOURCE_PATH)proj
+
+.PHONY: run # Run a .Net F# program.
+run: build
+	"$(DOTNET_BIN)" --no-build \
+ --project $(SOURCE_PATH)proj -- $(ARGS)
+endif
+
 #############################
 ##  .NET Examples/Samples  ##
 #############################
@@ -606,44 +641,6 @@ rdotnet_%: \
  $(DOTNET_ORTOOLS_NUPKG)
 	"$(DOTNET_BIN)" build ortools$Ssat$Ssamples$S$*.csproj
 	"$(DOTNET_BIN)" run --no-build --project ortools$Ssat$Ssamples$S$*.csproj -- $(ARGS)
-
-#####################
-##  .NET Examples  ##
-#####################
-ifeq ($(EX),) # Those rules will be used if EX variable is not set
-.PHONY: rdotnet cdotnet
-rdotnet cdotnet:
-	@echo No .Net file was provided, the $@ target must be used like so: \
- make $@ EX=examples/dotnet/csharp/example.csproj
-else # This generic rule will be used if EX variable is set
-EX_NAME = $(basename $(notdir $(EX)))
-
-.PHONY: cdotnet
-cdotnet: $(TEMP_DOTNET_DIR)/$(EX_NAME)$D
-
-.PHONY: rdotnet
-rdotnet: $(TEMP_DOTNET_DIR)/$(EX_NAME)$D
-	@echo running $<
-	"$(DOTNET_BIN)" $(TEMP_DOTNET_DIR)$S$(EX_NAME)$D
-endif # ifeq ($(EX),)
-
-$(TEMP_DOTNET_DIR)/%$D: \
- $(DOTNET_EX_DIR)/%.csproj \
- $(DOTNET_EX_DIR)/%.cs \
- $(DOTNET_ORTOOLS_NUPKG) \
- | $(TEMP_DOTNET_DIR)
-	"$(DOTNET_BIN)" build \
- -o "..$S..$S$(TEMP_DOTNET_DIR)" \
- $(DOTNET_EX_PATH)$S$*.csproj
-
-$(TEMP_DOTNET_DIR)/%$D: \
- $(DOTNET_EX_DIR)/%.fsproj \
- $(DOTNET_EX_DIR)/%.fs \
- $(DOTNET_ORTOOLS_FSHARP_NUPKG) \
- | $(TEMP_DOTNET_DIR)
-	"$(DOTNET_BIN)" build \
- -o "..$S..$S$(TEMP_DOTNET_DIR)" \
- $(DOTNET_EX_PATH)$S$*.fsproj
 
 ################
 ##  Cleaning  ##
