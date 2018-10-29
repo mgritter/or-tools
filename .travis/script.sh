@@ -51,17 +51,17 @@ if [ "${BUILDER}" == make ];then
 				make detect
 			fi
 			cat Makefile.local
-			make third_party
+			make third_party -j4
       if [ "${LANGUAGE}" == python2 ] || [ "${LANGUAGE}"  == python3 ]; then
-        make python
-        make test_python
+        make python -j4
+        make test_python -j4
       else
-        make "${LANGUAGE}"
-        make test_"${LANGUAGE}"
+        make "${LANGUAGE}" -j4
+        make test_"${LANGUAGE}" -j4
       fi
       if [ "${LANGUAGE}" == cc ]; then
-				make test_fz
-			fi
+				make test_fz -j2
+      fi
 		else
 			# Linux Docker Makefile build:
 			echo "NOT SUPPORTED"
@@ -84,16 +84,16 @@ if [ "${BUILDER}" == make ];then
 				make detect
 			fi
 			cat Makefile.local
-			make third_party
+			make third_party -j4
       if [ "${LANGUAGE}" == python2 ] || [ "${LANGUAGE}"  == python3 ]; then
-        make python
-        make test_python
+        make python -j4
+        make test_python -j4
       else
-        make "${LANGUAGE}"
-        make test_"${LANGUAGE}"
+        make "${LANGUAGE}" -j4
+        make test_"${LANGUAGE}" -j4
       fi
 			if [ "${LANGUAGE}" == cc ]; then
-				make test_fz
+				make test_fz -j2
 			fi
 		else
 			# MacOS Docker Makefile build:
